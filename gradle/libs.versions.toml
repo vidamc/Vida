@@ -35,7 +35,7 @@ jmh          = "1.37"
 lwjgl        = "3.3.4"
 
 # Gradle plugins
-spotless     = "7.0.2"
+spotless     = "8.4.0"
 errorprone   = "4.1.0"
 
 [libraries]
