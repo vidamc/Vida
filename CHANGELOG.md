@@ -16,6 +16,27 @@
 
 ---
 
+## [0.9.1](https://github.com/vidamc/Vida/compare/v0.9.0...v0.9.1) (2026-04-22)
+
+
+### Features
+
+* **valenta:** Valenta block in video settings; refresh docs ([4332e09](https://github.com/vidamc/Vida/commit/4332e093474cd98b2785c534553246ec12d6e5fc))
+* Vida 0.9.0 — платформа модов + рендер-мод Valenta ([428c8fb](https://github.com/vidamc/Vida/commit/428c8fbf5c1228926cd2c37e7569c92570c56202))
+* ремаппинг обфусцированных имён для Vifada-морфов ([9eaf41b](https://github.com/vidamc/Vida/commit/9eaf41ba4d063b141d70cccc83bbe0dadeef4f52))
+
+
+### Bug Fixes
+
+* **ci:** убраны нереализованные native installers из release.yml ([e023dea](https://github.com/vidamc/Vida/commit/e023dea2acf0b8a96e722be098734f3a49db42f2))
+* авто-определение версии Minecraft, права gradlew, Dependency Graph ([b8d21fc](https://github.com/vidamc/Vida/commit/b8d21fc32d95e9305c19f313804dbfc16bec2557))
+
+
+### Continuous Integration
+
+* авто-мерж PR, расширенный релиз, манифест 0.9.0 ([d1bf7dc](https://github.com/vidamc/Vida/commit/d1bf7dcab16103279cc21267f913290f89cb0f26))
+* авторелиз — release-please включает auto-merge на Release PR ([4599748](https://github.com/vidamc/Vida/commit/45997489af194bdfdbec05da3c511220d18c9eb0))
+
 ## [0.9.0] — 2026-04-22
 
 Valenta — Sodium-class rendering optimization mod. Полноценный аналог Sodium + Sodium Extra в одном моде.
