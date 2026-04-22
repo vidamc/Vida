@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability (PRIVATE)
+    url: https://github.com/vidamc/Vida/security/advisories/new
+    about: Нашли уязвимость? Откройте приватный security advisory, не публичный issue.
+  - name: Discussion / general question
+    url: https://github.com/vidamc/Vida/discussions
+    about: Обсуждения, идеи и помощь — в Discussions, а не в Issues.

@@ -1,0 +1,50 @@
+# Build output
+.gradle/
+build/
+out/
+bin/
+**/build/
+**/out/
+**/bin/
+
+# IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.project
+.classpath
+.settings/
+.factorypath
+.claude
+.cursor/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+vida.md
+
+# Logs and caches
+*.log
+*.hprof
+hs_err_pid*.log
+replay_pid*.log
+.cache/
+.vida/
+
+# Local envs
+.env
+.env.local
+*.local
+
+# Misc
+*.bak
+*.orig
+*.rej
+*.swp
+*~
+
+# Gradle wrapper jar is committed; everything else isn't
+!gradle/wrapper/gradle-wrapper.jar

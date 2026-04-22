@@ -1,0 +1,9 @@
+vida-puertas v1 namespace=intermedio
+
+# Saciedad — расширение доступа к FoodData для чтения насыщения
+#
+# Поле `saturation` в FoodData объявлено как `private float`, что недоступно
+# для внешних классов. Vifada-морф (FoodDataSaciedadMorph) обращается к нему
+# через @VifadaShadow, и Puertas должен сделать поле доступным на этапе
+# трансформации классов.
+mutable field net/minecraft/world/food/FoodData saturation F

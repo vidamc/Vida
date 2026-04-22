@@ -1,0 +1,83 @@
+# -------------------------------------------------------------------------
+# Vida — version catalog
+# Централизованные версии всех зависимостей и плагинов.
+# Обновлять вручную или через dependabot/renovate.
+# -------------------------------------------------------------------------
+
+[versions]
+# JDK целевой платформы
+java = "21"
+
+# Тесты
+junit        = "5.11.4"
+assertj      = "3.27.3"
+
+# Bytecode
+asm          = "9.7.1"
+
+# Логирование
+slf4j        = "2.0.16"
+logback      = "1.5.12"
+
+# Конфиги
+tomlj        = "1.1.1"
+
+# Database (installer — Modrinth handler)
+sqlite-jdbc  = "3.47.1.0"
+
+# Property-based testing (Valenta)
+jqwik        = "1.9.2"
+
+# Benchmarks (Valenta)
+jmh          = "1.37"
+
+# LWJGL (Valenta headless GL stubs)
+lwjgl        = "3.3.4"
+
+# Gradle plugins
+spotless     = "7.0.2"
+errorprone   = "4.1.0"
+
+[libraries]
+# ---- ASM (Vifada/Escultores/Cartografía) ----
+asm          = { module = "org.ow2.asm:asm",          version.ref = "asm" }
+asm-tree     = { module = "org.ow2.asm:asm-tree",     version.ref = "asm" }
+asm-commons  = { module = "org.ow2.asm:asm-commons",  version.ref = "asm" }
+asm-util     = { module = "org.ow2.asm:asm-util",     version.ref = "asm" }
+asm-analysis = { module = "org.ow2.asm:asm-analysis", version.ref = "asm" }
+
+# ---- SLF4J (единый фасад логирования внутри проекта) ----
+slf4j-api    = { module = "org.slf4j:slf4j-api",      version.ref = "slf4j" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+
+# ---- TOML ----
+tomlj        = { module = "org.tomlj:tomlj",          version.ref = "tomlj" }
+
+# ---- SQLite (installer) ----
+sqlite-jdbc  = { module = "org.xerial:sqlite-jdbc",   version.ref = "sqlite-jdbc" }
+
+# ---- Тесты ----
+junit-bom    = { module = "org.junit:junit-bom",      version.ref = "junit" }
+junit-jupiter           = { module = "org.junit.jupiter:junit-jupiter" }
+junit-jupiter-params    = { module = "org.junit.jupiter:junit-jupiter-params" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
+
+# ---- jqwik (property-based testing) ----
+jqwik        = { module = "net.jqwik:jqwik",            version.ref = "jqwik" }
+
+# ---- JMH ----
+jmh-core        = { module = "org.openjdk.jmh:jmh-core",                    version.ref = "jmh" }
+jmh-annprocess  = { module = "org.openjdk.jmh:jmh-generator-annprocess",    version.ref = "jmh" }
+
+# ---- LWJGL (headless GL for tests) ----
+lwjgl            = { module = "org.lwjgl:lwjgl",             version.ref = "lwjgl" }
+lwjgl-opengl     = { module = "org.lwjgl:lwjgl-opengl",      version.ref = "lwjgl" }
+
+[bundles]
+asm-all  = ["asm", "asm-tree", "asm-commons", "asm-util", "asm-analysis"]
+junit    = ["junit-jupiter", "junit-jupiter-params", "assertj-core"]
+
+[plugins]
+spotless   = { id = "com.diffplug.spotless",  version.ref = "spotless" }
+errorprone = { id = "net.ltgt.errorprone",    version.ref = "errorprone" }

@@ -1,0 +1,49 @@
+# Valenta — configuración del motor de renderizado
+#
+# Cada sección se puede ajustar en caliente con /valenta reload (sin reiniciar).
+
+[render]
+# Multi-draw indirect batching (requiere GL 4.3+, desactivar para GPUs antiguas)
+useMultiDrawIndirect = true
+# Compact vertex format: 16 bytes en lugar de 28 (reduce VRAM, mejora cache hits)
+useCompactVertexFormat = true
+# Biome blending vía SSBO (mejora calidad + rendimiento de blend)
+biomeBlendingSsbo = true
+# Block-light SSBO para luz optimizada
+blockLightSsbo = true
+
+[chunks]
+# Workers del task-graph de chunk meshing (0 = auto: cores/2)
+meshWorkers = 0
+# Tamaño máximo de la cola de tareas por etiqueta (back-pressure)
+maxColaPorEtiqueta = 64
+# Distancia de renderizado preferida (overrides vanilla si > 0)
+renderDistance = 0
+
+[culling]
+# Occlusion queries de hardware (requiere GL 3.3+)
+useOcclusionQueries = true
+# Frustum culling (siempre recomendado)
+useFrustumCulling = true
+# PVS (potentially visible set) tree — pre-cómputo offline
+usePvsTree = true
+
+[sky]
+# Usar glInvalidateFramebuffer cuando el cielo está oculto
+invalidateWhenOccluded = true
+
+[quality]
+# Ocultar partículas (none | reducir | ocultar)
+particles = "none"
+# Nubes personalizadas (vanilla | rapidas | desactivar)
+clouds = "vanilla"
+# Texturas animadas (activar | desactivar)
+animatedTextures = true
+# Distancia de renderizado mínima sin congelar workers
+minRenderDistanceSafe = 2
+
+[debug]
+# Panel F3 con tiempos GPU
+showGpuTimings = false
+# Overlay de occlusion culling
+showOcclusionOverlay = false

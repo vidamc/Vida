@@ -1,0 +1,153 @@
+# -----------------------------------------------------------------------------
+#  Vida CI — build & test on every push / pull request.
+#
+#  Матрица собирает проект на трёх ОС, потому что:
+#   * installer'у нужен JDK с jpackage на каждой платформе (smoke на Linux),
+#   * Path-поведение ФС у нас есть в тестах (:installer), надо ловить регрессии
+#     и на Windows, и на macOS,
+#   * loader-агент стартует на реальном JVM разных платформ.
+#
+#  Кэш Gradle держим через официальный gradle/actions/setup-gradle.
+# -----------------------------------------------------------------------------
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          validate-wrappers: true
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      # Полная сборка + все проверки. -Werror в java-conventions делает
+      # любое предупреждение ошибкой; тесты + JaCoCo идут в рамках check.
+      - name: Build
+        shell: bash
+        run: ./gradlew --no-daemon --stacktrace build
+
+      # Fat-jar собирается на Linux (он одинаковый на всех ОС) — нужен как
+      # входной артефакт для сборки нативных пакетов в release.yml.
+      - name: Build installer fat-jar (Linux only)
+        if: runner.os == 'Linux'
+        run: ./gradlew --no-daemon :installer:fatJar
+
+      - name: Upload installer fat-jar
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-fatjar-${{ github.sha }}
+          # Fat, runnable installer-<ver>.jar (без `-thin`/`-sources`/`-javadoc`).
+          path: |
+            installer/build/libs/installer-*.jar
+            !installer/build/libs/installer-*-thin.jar
+            !installer/build/libs/installer-*-sources.jar
+            !installer/build/libs/installer-*-javadoc.jar
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload test reports (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-${{ matrix.os }}-${{ github.run_attempt }}
+          path: |
+            **/build/reports/tests/**
+            **/build/test-results/**
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload JaCoCo coverage
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-reports-${{ github.sha }}
+          path: '**/build/reports/jacoco/**/*.xml'
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  #  Smoke-проверка fat-jar в headless-режиме — запускает ровно то, что
+  #  пользователь скачает с GitHub Releases, проверяет, что установка
+  #  не падает в dry-run'е и что version.json имеет правильный формат.
+  # ---------------------------------------------------------------------------
+  installer-smoke:
+    name: Installer fat-jar smoke test
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Download installer fat-jar
+        uses: actions/download-artifact@v4
+        with:
+          name: installer-fatjar-${{ github.sha }}
+          path: dist
+
+      - name: Smoke — dry run
+        run: |
+          set -euxo pipefail
+          jar=$(ls dist/installer-*.jar | grep -Ev '\-(thin|sources|javadoc)\.jar$' | head -n1)
+          workdir=$(mktemp -d)
+          java -jar "$jar" --headless --dir "$workdir" \
+                           --minecraft 1.21.1 --loader-version 0.0.0-smoke \
+                           --dry-run -y
+
+      - name: Smoke — real install + verify Minecraft profile shape
+        run: |
+          set -euxo pipefail
+          jar=$(ls dist/installer-*.jar | grep -Ev '\-(thin|sources|javadoc)\.jar$' | head -n1)
+          workdir=$(mktemp -d)
+          java -jar "$jar" --headless --dir "$workdir" \
+                           --minecraft 1.21.1 --loader-version 0.0.0-smoke -y
+          test -f "$workdir/libraries/dev/vida/vida-loader/0.0.0-smoke/vida-loader-0.0.0-smoke.jar"
+          test -f "$workdir/versions/vida-1.21.1-0.0.0-smoke/vida-1.21.1-0.0.0-smoke.json"
+          test -f "$workdir/versions/vida-1.21.1-0.0.0-smoke/vida-1.21.1-0.0.0-smoke.jar"
+          test -f "$workdir/launcher_profiles.json"
+          test -d "$workdir/mods"
+          test -f "$workdir/vida/install.json"
+          grep -q '"inheritsFrom": "1.21.1"' \
+            "$workdir/versions/vida-1.21.1-0.0.0-smoke/vida-1.21.1-0.0.0-smoke.json"
+          grep -q '"lastVersionId": "vida-1.21.1-0.0.0-smoke"' \
+            "$workdir/launcher_profiles.json"

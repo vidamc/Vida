@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "saciedad",
+  "version": "1.0.0",
+  "name": "Saciedad",
+  "description": "Muestra la barra de saturación oculta sobre la barra de hambre.",
+  "authors": ["Vida Project"],
+  "license": "Apache-2.0",
+  "entrypoints": {
+    "main": ["dev.vida.mods.saciedad.SaciedadMod"]
+  },
+  "vifada": {
+    "packages": ["dev.vida.mods.saciedad.morph.FoodDataSaciedadMorph"]
+  }
+}
