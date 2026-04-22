@@ -27,7 +27,7 @@ cd Vida
 ./gradlew :loader:agentJar  # shaded JAR агента
 ```
 
-Структура репозитория описана в [architecture/overview.md](../architecture/overview.md). Правила коммитов и стиля — в [`CONTRIBUTING.md`](../../CONTRIBUTING.md).
+Структура репозитория описана в [architecture/overview.md](../architecture/overview.md). Правила коммитов и стиля — в `[CONTRIBUTING.md](../../CONTRIBUTING.md)`.
 
 ## Вариант B. Разработка мода
 
@@ -117,14 +117,14 @@ curl -L https://piston-data.mojang.com/v1/objects/.../client.txt -o mappings/moj
 
 1. Установите расширение Red Hat Java.
 2. `settings.json`:
-   ```json
+  ```json
    {
      "java.configuration.runtimes": [
        { "name": "JavaSE-21", "path": "/path/to/jdk-21", "default": true }
      ],
      "java.import.gradle.wrapper.enabled": true
    }
-   ```
+  ```
 3. Запустите `./gradlew build`; после этого VS Code проиндексирует классы.
 
 ## Отладка
@@ -159,4 +159,5 @@ java -Dvida.log.level=DEBUG ...
 
 - Напишите свой первый мод — [first-mod.md](./first-mod.md).
 - Поняли архитектуру — [architecture/overview.md](../architecture/overview.md).
-- Готовы контрибьютить — [`CONTRIBUTING.md`](../../CONTRIBUTING.md).
+- Готовы контрибьютить — `[CONTRIBUTING.md](../../CONTRIBUTING.md)`.
+

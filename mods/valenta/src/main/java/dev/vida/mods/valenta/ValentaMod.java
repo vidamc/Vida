@@ -107,6 +107,7 @@ public final class ValentaMod implements VidaMod, ValentaHooks.ValentaHookReceiv
                 evento -> occlusionOverlay.renderizar(evento, culling));
 
         ValentaHooks.install(this);
+        ValentaRuntime.enlazar(this);
 
         ctx.log().info("Valenta iniciado (multiDraw={}, compactVtx={}, occlusion={}, pvs={})",
                 config.useMultiDrawIndirect(), config.useCompactVertexFormat(),
@@ -115,6 +116,7 @@ public final class ValentaMod implements VidaMod, ValentaHooks.ValentaHookReceiv
 
     @Override
     public void detener(ModContext ctx) {
+        ValentaRuntime.limpiar();
         ValentaHooks.uninstall();
         if (suscripcionOverlay != null) suscripcionOverlay.cancelar();
         if (chunkGraph != null) chunkGraph.cancelAll();
@@ -174,12 +176,41 @@ public final class ValentaMod implements VidaMod, ValentaHooks.ValentaHookReceiv
         return cloudRenderer.shouldRender();
     }
 
+    /**
+     * Aplica cambios hechos en la pantalla de vídeo (hilo principal del cliente).
+     */
+    public void aplicarAjustesDesdePantallaVideo(
+            boolean timingsGpu,
+            boolean overlayOclusion,
+            boolean particulasOcultas,
+            boolean particulasReducir,
+            boolean sinNubes,
+            boolean nubesPlanasRapidas) {
+        timingPane.setVisible(timingsGpu);
+        occlusionOverlay.setVisible(overlayOclusion);
+        if (particulasOcultas) {
+            particleFilter.setMode(ParticleFilter.Mode.OCULTAR);
+        } else if (particulasReducir) {
+            particleFilter.setMode(ParticleFilter.Mode.REDUCIR);
+        } else {
+            particleFilter.setMode(ParticleFilter.Mode.NINGUNO);
+        }
+        if (sinNubes) {
+            cloudRenderer.setMode(CloudRenderer.Mode.DESACTIVAR);
+        } else if (nubesPlanasRapidas) {
+            cloudRenderer.setMode(CloudRenderer.Mode.RAPIDAS);
+        } else {
+            cloudRenderer.setMode(CloudRenderer.Mode.VANILLA);
+        }
+    }
+
     // ---- Accessors for tests and debug ----
 
     ValentaConfig config() { return config; }
     CullingEngine culling() { return culling; }
     ValentaDebugComando debugComando() { return debugComando; }
     GpuTimingPane timingPane() { return timingPane; }
+    OcclusionOverlay occlusionOverlay() { return occlusionOverlay; }
     ParticleFilter particleFilter() { return particleFilter; }
     CloudRenderer cloudRenderer() { return cloudRenderer; }
     AnimatedTextureManager animatedTextures() { return animatedTextures; }

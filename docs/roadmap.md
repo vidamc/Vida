@@ -1,6 +1,6 @@
 # Roadmap
 
-Короткий, живой документ. Детали — в [`vida.md`](../vida.md) (оригинальное ТЗ) и в GitHub Projects / Milestones.
+Короткий, живой документ. Детали — в GitHub Projects / Milestones.
 
 ## Done (0.1.x — 0.9.0)
 

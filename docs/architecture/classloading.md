@@ -73,7 +73,7 @@ public abstract class LevelMorph {
 }
 ```
 
-Компилятор видит обычные поле и метод; байтовый референс `LevelMorph.tickCount` / `LevelMorph.tick()`. При трансформации Vifada встречает эти референсы в теле inject-методов и подменяет owner на `net.minecraft.world.level.Level` — значит, в рантайме мод _действительно_ обращается к приватному полю/методу vanilla-класса. Всё это — в `JuegoLoader`, так что reflection-не-нужен, и нет cross-loader-барьера.
+Компилятор видит обычные поле и метод; байтовый референс `LevelMorph.tickCount` / `LevelMorph.tick()`. При трансформации Vifada встречает эти референсы в теле inject-методов и подменяет owner на `net.minecraft.world.level.Level` — значит, в рантайме мод *действительно* обращается к приватному полю/методу vanilla-класса. Всё это — в `JuegoLoader`, так что reflection-не-нужен, и нет cross-loader-барьера.
 
 ## `TransformingClassLoader` — альтернативный путь
 
@@ -106,3 +106,4 @@ JPMS (`ModuleLayer`) — красивое решение на бумаге, но
 - Определённость: «я вижу свой код, Minecraft, Vida API и базовые java-классы».
 - Возможность грузить библиотеки разных версий в разных модах без коллизий.
 - Точную гарантию: после инициализации Vida у `JuegoLoader` фиксированное множество трансформеров и байтов; новые классы не появляются (см. [performance.md](./performance.md)).
+

@@ -2,7 +2,7 @@
 
 Типизированное API для настроек мода. Схема описывается в коде, данные — в TOML-файле рядом с модом.
 
-Базовые типы — в [`modules/config.md`](../modules/config.md) и [`modules/base.md`](../modules/base.md#devvidabaseajustes). Здесь — практика.
+Базовые типы — в `[modules/config.md](../modules/config.md)` и `[modules/base.md](../modules/base.md#devvidabaseajustes)`. Здесь — практика.
 
 ## Базовый сценарий
 
@@ -90,7 +90,7 @@ distance = 64
 java -Dvida.profile=performance -javaagent:... -jar ...
 ```
 
-Накладывается overlay'ем поверх корневых значений — массивы и скаляры заменяются целиком, таблицы сливаются по правилам [`ConfigMerger`](../modules/config.md#configmerger).
+Накладывается overlay'ем поверх корневых значений — массивы и скаляры заменяются целиком, таблицы сливаются по правилам `[ConfigMerger](../modules/config.md#configmerger)`.
 
 ## Внешний overlay
 
@@ -193,3 +193,4 @@ API `sincronizar()` — preview; финальный контракт см. в `d
 - [modules/config.md](../modules/config.md) — устройство модуля.
 - [modules/base.md](../modules/base.md#devvidabaseajustes) — реализация `AjustesTipados`.
 - [glossary.md#ajustes](../glossary.md#ajustes) — этимология.
+

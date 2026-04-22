@@ -2,18 +2,20 @@
 
 ## Поддерживаемые версии
 
-| Версия Vida | Поддержка безопасностью |
-|---|---|
-| `main` (development) | ✅ |
-| LTS (определяется с первого релиза) | ✅ |
-| более старые | ❌ |
+
+| Версия Vida                         | Поддержка безопасностью |
+| ----------------------------------- | ----------------------- |
+| `main` (development)                | ✅                       |
+| LTS (определяется с первого релиза) | ✅                       |
+| более старые                        | ❌                       |
+
 
 ## Сообщить об уязвимости
 
 **Не открывайте публичные issues для security-проблем.**
 
 Пожалуйста, используйте приватный GitHub Security Advisory:
-<https://github.com/vidamc/Vida/security/advisories/new>
+[https://github.com/vidamc/Vida/security/advisories/new](https://github.com/vidamc/Vida/security/advisories/new)
 
 Либо отправьте письмо на `security@beforemine.tech` (GPG-ключ будет опубликован вместе с первым релизом).
 
@@ -24,7 +26,7 @@
 В рамки политики входит:
 
 - загрузчик `vida-core` и все подсистемы (`vifada`, `cartografia`, `loader`, …);
-- API-модули `vida-*`;
+- API-модули `vida-`*;
 - `vida-gradle-plugin`;
 - релизные артефакты и их подписи.
 

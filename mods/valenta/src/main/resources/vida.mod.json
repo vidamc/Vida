@@ -21,7 +21,8 @@
       "dev.vida.mods.valenta.escultor.GameRendererMorph",
       "dev.vida.mods.valenta.escultor.ChunkRendererMorph",
       "dev.vida.mods.valenta.escultor.ParticleMorph",
-      "dev.vida.mods.valenta.escultor.CloudMorph"
+      "dev.vida.mods.valenta.escultor.CloudMorph",
+      "dev.vida.mods.valenta.escultor.VideoSettingsScreenMorph"
     ]
   },
   "custom": {

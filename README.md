@@ -34,7 +34,7 @@ Vida построен вокруг трёх инженерных решений,
 - **Нулевая работа в hot-path после инициализации.** Загрузчик не вмешивается в game-tick: ни `retransform`, ни allocation-heavy event-буса, ни scan-on-hit рефлексии.
 - **API, который сам уводит работу с главного потока.** `Susurro` (пул задач), `Latidos Profundos` (events с executor-hint), `Catalogo` (регистрации батчами) — всё спроектировано так, чтобы мододел _по умолчанию_ писал код, который не роняет TPS.
 
-Детальное архитектурное обоснование — в [`vida.md`](./vida.md) и в [`docs/architecture/performance.md`](./docs/architecture/performance.md).
+Детальное архитектурное обоснование — в [`docs/architecture/performance.md`](./docs/architecture/performance.md).
 
 ## Основные возможности
 
@@ -147,8 +147,6 @@ cd Vida
 - [Guides](./docs/guides/index.md) — Latidos, Catalogo, Ajustes, Vifada, Escultores, мульти-лаунчер
 - [Reference](./docs/reference/index.md) — `vida.mod.json` schema, CLI installer, стабильность API
 - [FAQ](./docs/faq.md) · [Troubleshooting](./docs/troubleshooting.md) · [Глоссарий](./docs/glossary.md)
-
-Техническая спецификация, на которой стоит проект, — [`vida.md`](./vida.md).
 
 ## Словарь проекта
 

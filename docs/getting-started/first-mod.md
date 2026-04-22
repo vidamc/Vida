@@ -46,7 +46,7 @@ public final class MiAventura implements VidaMod {
 }
 ```
 
-`VidaMod.iniciar` вызывается один раз сразу после загрузки классов мода. Всё, что связано с регистрацией контента и подпиской на события, идёт сюда. Контракт — [`VidaMod`](../modules/base.md#vidamod).
+`VidaMod.iniciar` вызывается один раз сразу после загрузки классов мода. Всё, что связано с регистрацией контента и подпиской на события, идёт сюда. Контракт — `[VidaMod](../modules/base.md#vidamod)`.
 
 ## 3. Манифест
 
@@ -150,4 +150,4 @@ distance = 48
 - [Vifada](../guides/vifada.md) — модификация байткода Minecraft.
 - [API stability](../reference/api-stability.md) — какие аннотации `@Stable` / `@Preview` ставить на свои публичные классы.
 
-Шаблон выше — в репозитории [`vida-examples/miaventura`](https://github.com/vidamc/Vida) (в работе). Он же используется в integration-тестах `gradle-plugin`.
+Шаблон выше — в репозитории `[vida-examples/miaventura](https://github.com/vidamc/Vida)` (в работе). Он же используется в integration-тестах `gradle-plugin`.
