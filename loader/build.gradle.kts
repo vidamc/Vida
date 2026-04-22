@@ -27,6 +27,7 @@ dependencies {
     api(project(":vifada"))
     api(project(":base"))
     api(project(":render"))
+    api(project(":cartografia"))
 
     implementation(libs.asm)
     implementation(libs.asm.tree)

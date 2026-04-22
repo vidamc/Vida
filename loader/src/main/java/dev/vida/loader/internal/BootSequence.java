@@ -50,6 +50,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.zip.ZipException;
 
@@ -103,9 +104,12 @@ public final class BootSequence {
         // ---- 3. Collect morphs -----------------------------------------
         MorphIndex morphs = collectMorphs(resolution, byId, errors);
 
+        // ---- 3b. Load obf→deobf class name mappings -------------------
+        Map<String, String> obfToDeobf = loadClassMappings(options);
+
         // ---- 4. ClassLoaders -------------------------------------------
         Consumer<LoaderError> sink = e -> { synchronized (errors) { errors.add(e); } };
-        VidaClassTransformer transformer = new VidaClassTransformer(morphs, sink);
+        VidaClassTransformer transformer = new VidaClassTransformer(morphs, sink, obfToDeobf);
         JuegoLoader juego = new JuegoLoader(toUrls(options.gameJars(), errors),
                 parent == null ? ClassLoader.getSystemClassLoader() : parent, transformer);
         Map<String, ModLoader> modLoaders = buildModLoaders(resolvedMods, byId, juego, transformer, errors);
@@ -452,6 +456,33 @@ public final class BootSequence {
                     "exception in iniciar() of '" + className + "' [" + manifest.id() + "]: "
                     + ex.getMessage()));
         }
+    }
+
+    private static Map<String, String> loadClassMappings(BootOptions options) {
+        Optional<String> mcVer = options.minecraftVersion();
+        if (mcVer.isEmpty()) {
+            // Try auto-detected version from classpath
+            Optional<dev.vida.core.Version> detected =
+                    SyntheticProviders.resolveMinecraftVersion(options);
+            if (detected.isPresent()) {
+                mcVer = Optional.of(detected.get().toString());
+            }
+        }
+        if (mcVer.isEmpty()) return Map.of();
+
+        // Resolve .minecraft root from modsDir (modsDir is .minecraft/mods)
+        Path gameDir = null;
+        if (options.modsDir() != null) {
+            gameDir = options.modsDir().getParent();
+        }
+        if (gameDir == null) {
+            try {
+                gameDir = Path.of(System.getProperty("user.dir", "."));
+            } catch (SecurityException ignored) {
+                return Map.of();
+            }
+        }
+        return MappingLoader.loadClassMap(mcVer.get(), gameDir);
     }
 
     private static Path resolveDataDir(BootOptions options, String modId) {

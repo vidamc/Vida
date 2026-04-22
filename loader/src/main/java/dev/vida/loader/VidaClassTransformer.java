@@ -12,6 +12,7 @@ import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
 import java.security.ProtectionDomain;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Consumer;
@@ -47,13 +48,25 @@ public final class VidaClassTransformer implements ClassFileTransformer {
 
     private final MorphIndex index;
     private final Consumer<LoaderError> errorSink;
+    private final Map<String, String> obfToDeobf;
     private final LongAdder transformed = new LongAdder();
     private final LongAdder skipped     = new LongAdder();
     private final LongAdder errors      = new LongAdder();
 
     public VidaClassTransformer(MorphIndex index, Consumer<LoaderError> errorSink) {
+        this(index, errorSink, Map.of());
+    }
+
+    /**
+     * @param obfToDeobf obfuscated internal name → deobfuscated internal name.
+     *                   Used to resolve morph targets when Minecraft classes are
+     *                   loaded under their obfuscated names at runtime.
+     */
+    public VidaClassTransformer(MorphIndex index, Consumer<LoaderError> errorSink,
+                                Map<String, String> obfToDeobf) {
         this.index = Objects.requireNonNull(index, "index");
         this.errorSink = errorSink == null ? e -> {} : errorSink;
+        this.obfToDeobf = obfToDeobf == null ? Map.of() : obfToDeobf;
     }
 
     /** Индекс, из которого работает этот трансформер. */
@@ -109,11 +122,14 @@ public final class VidaClassTransformer implements ClassFileTransformer {
             }
         }
 
+        // Resolve: если className обфусцирован, ищем деобфусцированный эквивалент.
+        String morphKey = resolveMorphKey(className);
+
         // No-morph branch — это 99.99% всех вызовов; НИКАКИХ counter-ops.
-        if (!index.hasMorphs(className)) {
+        if (morphKey == null) {
             return branded ? workingBuf : null;
         }
-        byte[] morphed = applyMorphs(className, workingBuf);
+        byte[] morphed = applyMorphs(morphKey, workingBuf);
         if (morphed != null) return morphed;
         return branded ? workingBuf : null;
     }
@@ -130,9 +146,22 @@ public final class VidaClassTransformer implements ClassFileTransformer {
             byte[] branded = BrandingEscultor.tryPatch(working);
             if (branded != null) working = branded;
         }
-        if (!index.hasMorphs(internalName)) return working;
-        byte[] out = applyMorphs(internalName, working);
+        String morphKey = resolveMorphKey(internalName);
+        if (morphKey == null) return working;
+        byte[] out = applyMorphs(morphKey, working);
         return out != null ? out : working;
+    }
+
+    /**
+     * Returns the MorphIndex key if any morphs are registered for this class,
+     * checking both the raw name and the deobfuscated equivalent. Returns
+     * {@code null} if no morphs match.
+     */
+    private String resolveMorphKey(String internalName) {
+        if (index.hasMorphs(internalName)) return internalName;
+        String deobf = obfToDeobf.get(internalName);
+        if (deobf != null && index.hasMorphs(deobf)) return deobf;
+        return null;
     }
 
     private byte[] applyMorphs(String internalName, byte[] buf) {
