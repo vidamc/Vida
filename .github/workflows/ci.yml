@@ -120,7 +120,7 @@ jobs:
           java-version: 21
 
       - name: Download installer fat-jar
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: installer-fatjar-${{ github.sha }}
           path: dist
