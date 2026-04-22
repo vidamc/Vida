@@ -99,6 +99,22 @@ final class SyntheticProvidersTest {
         assertThat(v).contains(Version.parse("1.21.1"));
     }
 
+    @Test
+    void extractJsonString_parses_id_field() {
+        String json = """
+                {"id":"1.21.1","name":"1.21.1","release_target":"1.21.1"}
+                """;
+        assertThat(SyntheticProviders.extractJsonString(json, "id")).isEqualTo("1.21.1");
+        assertThat(SyntheticProviders.extractJsonString(json, "name")).isEqualTo("1.21.1");
+        assertThat(SyntheticProviders.extractJsonString(json, "missing")).isNull();
+    }
+
+    @Test
+    void extractJsonString_returns_null_for_malformed() {
+        assertThat(SyntheticProviders.extractJsonString("{}", "id")).isNull();
+        assertThat(SyntheticProviders.extractJsonString("", "id")).isNull();
+    }
+
     // ================================================================ java
 
     @Test
