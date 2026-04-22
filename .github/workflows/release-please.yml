@@ -1,12 +1,13 @@
 # -----------------------------------------------------------------------------
-#  release-please
+#  release-please + auto-release pipeline
 #
-#  Из conventional-commits в main автоматически строит «release PR» и обновляет
-#  CHANGELOG + version.txt. Когда release PR мержится, создаётся тег vX.Y.Z и
-#  GitHub Release — это event, на который реагирует release.yml.
-#
-#  release-type: "simple" — release-please следит за корневым version.txt.
-#  См. release-please-config.json / .release-please-manifest.json.
+#  1. Push в main → release-please создаёт/обновляет Release PR
+#     (CHANGELOG + version.txt bump). Auto-merge включается сразу.
+#  2. Release PR проходит CI → авто-мержится в main.
+#  3. Следующий push в main → release-please видит merged release PR →
+#     создаёт тег vX.Y.Z и GitHub Release.
+#  4. release.yml реагирует на событие "release created" → собирает и
+#     прикрепляет JAR-артефакты.
 # -----------------------------------------------------------------------------
 
 name: release-please
@@ -37,8 +38,23 @@ jobs:
           target-branch: main
           config-file: .github/release-please-config.json
           manifest-file: .github/.release-please-manifest.json
+
+      # Если release-please создал или обновил PR — включаем авто-мерж.
+      # При прохождении всех required status checks PR замержится сам.
+      - name: Enable auto-merge on release PR
+        if: steps.release-please.outputs.pr != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pr_number=$(echo '${{ steps.release-please.outputs.pr }}' | jq -r '.number // empty')
+          if [ -n "$pr_number" ]; then
+            echo "Enabling auto-merge on PR #${pr_number}"
+            gh pr merge "$pr_number" --auto --squash --repo "${{ github.repository }}" || true
+          fi
+
     outputs:
       release_created: ${{ steps.release-please.outputs.release_created }}
       tag_name:        ${{ steps.release-please.outputs.tag_name }}
       version:         ${{ steps.release-please.outputs.version }}
       upload_url:      ${{ steps.release-please.outputs.upload_url }}
+      pr_number:       ${{ steps.release-please.outputs.pr && fromJSON(steps.release-please.outputs.pr).number || '' }}

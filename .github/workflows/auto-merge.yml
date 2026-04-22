@@ -1,7 +1,6 @@
 # -----------------------------------------------------------------------------
-#  Auto-merge — при успешном прохождении всех CI-проверок PR автоматически
-#  мержится в main (squash). Работает только для PR, созданных участниками
-#  организации vidamc или release-please-ботом.
+#  Auto-merge — для PR от Dependabot и участников организации vidamc.
+#  Release-please PR обрабатываются в release-please.yml.
 # -----------------------------------------------------------------------------
 
 name: auto-merge
@@ -10,8 +9,6 @@ on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened]
-  check_suite:
-    types: [completed]
 
 permissions:
   contents: write
@@ -22,13 +19,9 @@ jobs:
     name: Enable auto-merge
     runs-on: ubuntu-latest
     if: >-
-      github.event_name == 'pull_request' &&
-      (
-        github.event.pull_request.user.login == 'github-actions[bot]' ||
-        github.event.pull_request.user.login == 'release-please[bot]' ||
-        github.event.pull_request.author_association == 'OWNER' ||
-        github.event.pull_request.author_association == 'MEMBER'
-      )
+      github.event.pull_request.user.login == 'dependabot[bot]' ||
+      github.event.pull_request.author_association == 'OWNER' ||
+      github.event.pull_request.author_association == 'MEMBER'
     steps:
       - name: Enable auto-merge (squash)
         env:
