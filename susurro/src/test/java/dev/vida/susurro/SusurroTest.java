@@ -140,7 +140,7 @@ class SusurroTest {
     }
 
     @Test
-    void plazo_aborta_larga_tarea() {
+    void plazo_aborta_larga_tarea() throws Exception {
         try (Susurro sus = Susurro.iniciar()) {
             Tarea<Integer> t = sus.lanzar(Prioridad.NORMAL, Etiqueta.de("lenta"), () -> {
                 try { Thread.sleep(5_000); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
@@ -148,7 +148,15 @@ class SusurroTest {
             }).conPlazo(Duration.ofMillis(150));
             assertThatThrownBy(() -> t.esperar(Duration.ofSeconds(1)))
                     .isInstanceOf(ExecutionException.class);
-            assertThat(t.estado()).isEqualTo(Tarea.Estado.CANCELADA);
+            // whenComplete puede ejecutarse después de que get() lance — en CI
+            // Windows el estado aún no es CANCELADA en el mismo instante.
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+            while (t.estado() != Tarea.Estado.CANCELADA) {
+                if (System.nanoTime() > deadline) {
+                    throw new AssertionError("expected CANCELADA, was " + t.estado());
+                }
+                Thread.sleep(5);
+            }
         }
     }
 
