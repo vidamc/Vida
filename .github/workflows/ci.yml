@@ -67,7 +67,7 @@ jobs:
 
       - name: Upload installer fat-jar
         if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: installer-fatjar-${{ github.sha }}
           # Fat, runnable installer-<ver>.jar (без `-thin`/`-sources`/`-javadoc`).
@@ -81,7 +81,7 @@ jobs:
 
       - name: Upload test reports (on failure)
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-reports-${{ matrix.os }}-${{ github.run_attempt }}
           path: |
@@ -92,7 +92,7 @@ jobs:
 
       - name: Upload JaCoCo coverage
         if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jacoco-reports-${{ github.sha }}
           path: '**/build/reports/jacoco/**/*.xml'
