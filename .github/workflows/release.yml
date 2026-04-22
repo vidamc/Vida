@@ -2,12 +2,10 @@
 #  Vida Release — triggered when release-please (or a manual tag push) creates
 #  a new GitHub Release. Строит артефакты и прикладывает их к релизу:
 #
-#    * fat-jar (vida-installer-X.Y.Z.jar)           — Linux-сборка, одинаковый
-#                                                     для всех ОС
-#    * vida-installer-linux-x64-X.Y.Z.deb           — jpackage, Ubuntu
-#    * vida-installer-windows-x64-X.Y.Z.msi         — jpackage, Windows
-#    * vida-installer-macos-x64-X.Y.Z.dmg           — jpackage, macOS
-#    * loader.jar / api-*-jars                      — для gradle-потребителей
+#    * fat-jar (vida-installer-X.Y.Z.jar)           — универсальный инсталлятор
+#    * vida-loader-X.Y.Z.jar                        — загрузчик (Java-агент)
+#    * vida-core/base/manifest/...                   — API-модули
+#    * vida-saciedad/senda/valenta                   — моды
 #    * SHA256SUMS / SHA512SUMS
 #    * *.sig / *.pem                                — Sigstore keyless подписи
 #
@@ -35,7 +33,7 @@ concurrency:
 
 jobs:
   # ---------------------------------------------------------------------------
-  #  1. Универсальные (OS-independent) артефакты: fat-jar + module jars.
+  #  1. Сборка всех JAR-артефактов (OS-independent).
   # ---------------------------------------------------------------------------
   build-universal:
     name: Universal artifacts
@@ -122,95 +120,17 @@ jobs:
           retention-days: 7
 
   # ---------------------------------------------------------------------------
-  #  2. Нативный инсталлятор на каждой ОС через jpackage.
-  #     Матрица обязательно включает хост-ОС: jpackage умеет собирать пакеты
-  #     только под платформу, на которой он запущен.
-  # ---------------------------------------------------------------------------
-  build-native:
-    name: Native installer (${{ matrix.label }})
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            label: linux-x64
-            pkg-type: deb
-            ext: deb
-          - os: windows-latest
-            label: windows-x64
-            pkg-type: msi
-            ext: msi
-          - os: macos-latest
-            label: macos-x64
-            pkg-type: dmg
-            ext: dmg
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          validate-wrappers: true
-
-      - name: Install Linux packaging tools
-        if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fakeroot binutils
-
-      - name: Resolve version
-        id: ver
-        shell: bash
-        run: |
-          set -euxo pipefail
-          v=$(./gradlew -q printVersion | tail -n1 | tr -d '[:space:]')
-          echo "version=$v" >> "$GITHUB_OUTPUT"
-
-      - name: jpackage
-        shell: bash
-        run: |
-          set -euxo pipefail
-          ./gradlew --no-daemon :installer:vidaNativePackage \
-            -PvidaInstallerType=${{ matrix.pkg-type }} \
-            -PvidaInstallerNameSuffix=${{ matrix.label }}
-
-      - name: Stage native installer
-        shell: bash
-        run: |
-          set -euxo pipefail
-          v='${{ steps.ver.outputs.version }}'
-          out="installer/build/native"
-          ls -la "$out"
-          mkdir -p dist
-          # jpackage печёт что-то вроде VidaInstaller-<label>-<app-version>.<ext>.
-          # Приводим имя к единому виду vida-installer-<label>-<v>.<ext>.
-          src=$(ls "$out"/*.${{ matrix.ext }} | head -n1)
-          cp "$src" "dist/vida-installer-${{ matrix.label }}-${v}.${{ matrix.ext }}"
-          ls -la dist
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: release-native-${{ matrix.label }}
-          path: dist/*
-          if-no-files-found: error
-          retention-days: 7
-
-  # ---------------------------------------------------------------------------
-  #  3. Сбор, checksums, Sigstore-подпись, upload в GitHub Release.
+  #  2. Checksums, Sigstore-подпись, upload в GitHub Release.
   # ---------------------------------------------------------------------------
   publish:
     name: Checksums + Sigstore + GitHub Release
     runs-on: ubuntu-latest
-    needs: [build-universal, build-native]
+    needs: [build-universal]
     timeout-minutes: 30
     permissions:
-      contents: write      # для upload-а в Release
-      id-token: write      # для OIDC → Sigstore (keyless)
-      attestations: write  # для build-provenance attestation
+      contents: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v4
 
@@ -224,7 +144,7 @@ jobs:
         run: |
           set -euxo pipefail
           mkdir -p dist
-          find staged -type f \( -name '*.jar' -o -name '*.deb' -o -name '*.msi' -o -name '*.dmg' -o -name '*.exe' -o -name '*.rpm' -o -name '*.pkg' \) -exec cp {} dist/ \;
+          find staged -type f -name '*.jar' -exec cp {} dist/ \;
           ls -la dist
 
       - name: Generate checksums
@@ -248,7 +168,7 @@ jobs:
           COSIGN_EXPERIMENTAL: "true"
         run: |
           set -euxo pipefail
-          for f in $(ls *.jar *.deb *.msi *.dmg 2>/dev/null); do
+          for f in *.jar; do
             cosign sign-blob --yes "$f" \
               --output-signature   "${f}.sig" \
               --output-certificate "${f}.pem"
@@ -258,7 +178,7 @@ jobs:
       - name: Build-provenance attestation
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: 'dist/*.{jar,deb,msi,dmg}'
+          subject-path: 'dist/*.jar'
 
       - name: Resolve release reference
         id: ref
@@ -278,9 +198,6 @@ jobs:
           fail_on_unmatched_files: true
           files: |
             dist/*.jar
-            dist/*.deb
-            dist/*.msi
-            dist/*.dmg
             dist/*.sig
             dist/*.pem
             dist/SHA256SUMS
