@@ -62,7 +62,8 @@ jobs:
           echo "version=$v" >> "$GITHUB_OUTPUT"
 
       - name: Build all jars
-        run: ./gradlew --no-daemon :installer:fatJar :loader:jar :core:jar :manifest:jar :base:jar
+        shell: bash
+        run: ./gradlew --no-daemon build :installer:fatJar
 
       - name: Stage universal artifacts
         shell: bash
@@ -70,14 +71,47 @@ jobs:
           set -euxo pipefail
           v='${{ steps.ver.outputs.version }}'
           mkdir -p dist
-          # Fat, runnable installer (no `-thin`/`-sources`/`-javadoc` suffix).
-          fat_installer=$(ls installer/build/libs/installer-*.jar \
+
+          copy_jar() {
+            local module="$1" name="$2"
+            local src
+            src=$(ls "${module}/build/libs/${name}-"*.jar \
+                | grep -Ev '\-(thin|sources|javadoc|jmh)\.jar$' | head -n1)
+            [ -n "$src" ] && cp "$src" "dist/vida-${name}-${v}.jar"
+          }
+
+          # Installer (fat-jar)
+          fat=$(ls installer/build/libs/installer-*.jar \
               | grep -Ev '\-(thin|sources|javadoc)\.jar$' | head -n1)
-          cp "$fat_installer" "dist/vida-installer-${v}.jar"
-          cp loader/build/libs/loader-*.jar "dist/vida-loader-${v}.jar"
-          cp core/build/libs/core-*.jar "dist/vida-core-${v}.jar"
-          cp manifest/build/libs/manifest-*.jar "dist/vida-manifest-${v}.jar"
-          cp base/build/libs/base-*.jar "dist/vida-base-${v}.jar"
+          cp "$fat" "dist/vida-installer-${v}.jar"
+
+          # Core platform
+          copy_jar core core
+          copy_jar manifest manifest
+          copy_jar config config
+          copy_jar cartografia cartografia
+          copy_jar discovery discovery
+          copy_jar resolver resolver
+          copy_jar vifada vifada
+          copy_jar loader loader
+          copy_jar base base
+
+          # API / runtime
+          copy_jar bloque bloque
+          copy_jar objeto objeto
+          copy_jar susurro susurro
+          copy_jar puertas puertas
+          copy_jar vigia vigia
+          copy_jar entidad entidad
+          copy_jar mundo mundo
+          copy_jar render render
+          copy_jar red red
+
+          # Mods
+          copy_jar mods/saciedad saciedad
+          copy_jar mods/senda senda
+          copy_jar mods/valenta valenta
+
           ls -la dist
 
       - uses: actions/upload-artifact@v4
