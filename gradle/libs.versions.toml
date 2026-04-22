@@ -9,7 +9,7 @@
 java = "21"
 
 # Тесты
-junit        = "5.11.4"
+junit        = "6.0.3"
 assertj      = "3.27.3"
 
 # Bytecode
