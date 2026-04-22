@@ -16,6 +16,18 @@
 
 ---
 
+## [0.9.1](https://github.com/vidamc/Vida/compare/v0.9.0...v0.9.1) (2026-04-22)
+
+
+### Features
+
+* ремаппинг обфусцированных имён для Vifada-морфов ([9eaf41b](https://github.com/vidamc/Vida/commit/9eaf41ba4d063b141d70cccc83bbe0dadeef4f52))
+
+
+### Continuous Integration
+
+* авторелиз — release-please включает auto-merge на Release PR ([4599748](https://github.com/vidamc/Vida/commit/45997489af194bdfdbec05da3c511220d18c9eb0))
+
 ## [0.9.0] — 2026-04-22
 
 Valenta — Sodium-class rendering optimization mod. Полноценный аналог Sodium + Sodium Extra в одном моде.
