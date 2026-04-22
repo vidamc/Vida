@@ -1,0 +1,30 @@
+# -----------------------------------------------------------------------------
+#  CODEOWNERS — Vida.
+#
+#  Организация: vidamc. Команда @vidamc/core назначается ревьюером по умолчанию
+#  (создайте команду в настройках org: Teams → New team → core).
+#  Точечные owners добавятся по мере роста проекта.
+# -----------------------------------------------------------------------------
+
+*               @vidamc/core
+
+# Ядро: строгий two-review там, где ошибка стоит дорого.
+/core/          @vidamc/core
+/loader/        @vidamc/core
+/vifada/        @vidamc/core
+/cartografia/   @vidamc/core
+/resolver/      @vidamc/core
+/discovery/     @vidamc/core
+/manifest/      @vidamc/core
+
+# Toolchain и билд-инфраструктура.
+/build-logic/   @vidamc/core
+/gradle-plugin/ @vidamc/core
+/installer/     @vidamc/core
+
+# CI/CD — самый чувствительный раздел (подписи, OIDC, секреты).
+/.github/       @vidamc/core
+
+# Документация.
+/docs/          @vidamc/core
+/vida.md        @vidamc/core

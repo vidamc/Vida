@@ -1,0 +1,32 @@
+name: Feature request
+description: Предложение API, оптимизации или новой функциональности.
+title: "feat: <короткое описание>"
+labels: [enhancement, triage]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Какая проблема решается?
+      description: Опишите сценарий из реальной практики (пишете мод, запускаете сервер, ...).
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Предложение
+      description: Как хотелось бы, чтобы это работало? API, UX, поведение.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Альтернативы
+      description: Что уже пробовали и почему не подошло.
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Влияние
+      description: Затрагивает ли предложение производительность, совместимость, public API?

@@ -1,0 +1,49 @@
+# -----------------------------------------------------------------------------
+#  Dependabot — держит в актуальном состоянии Gradle-зависимости и GitHub
+#  Actions. Группируем обновления, чтобы не создавать 20 PR в неделю.
+# -----------------------------------------------------------------------------
+
+version: 2
+updates:
+  # --- Gradle ---------------------------------------------------------------
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: "Etc/UTC"
+    open-pull-requests-limit: 10
+    labels: [dependencies, gradle]
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+      include: scope
+    groups:
+      asm:
+        patterns: ["org.ow2.asm:*"]
+      junit:
+        patterns: ["org.junit*:*"]
+      slf4j-logback:
+        patterns: ["org.slf4j:*", "ch.qos.logback:*"]
+      gradle-plugins:
+        patterns: ["*.plugin", "*:gradle-plugin"]
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  # --- GitHub Actions -------------------------------------------------------
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: "Etc/UTC"
+    open-pull-requests-limit: 5
+    labels: [dependencies, github-actions]
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      actions-minor:
+        update-types: ["minor", "patch"]

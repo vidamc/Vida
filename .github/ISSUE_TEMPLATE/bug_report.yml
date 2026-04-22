@@ -1,0 +1,75 @@
+name: Bug report
+description: Что-то работает не так, как описано.
+title: "bug: <короткое описание>"
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо за багрепорт! Перед отправкой проверьте, что проблема
+        воспроизводится на последнем релизе (см. [Releases](https://github.com/vidamc/Vida/releases)).
+
+  - type: input
+    id: vida-version
+    attributes:
+      label: Версия Vida
+      placeholder: "например: 0.1.0 или main@abcdef0"
+    validations:
+      required: true
+
+  - type: input
+    id: mc-version
+    attributes:
+      label: Версия Minecraft
+      placeholder: "1.21.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: ОС
+      options: [Windows, Linux, macOS, Other]
+    validations:
+      required: true
+
+  - type: input
+    id: java
+    attributes:
+      label: JDK/JRE
+      placeholder: "например: Temurin 21.0.5"
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Как воспроизвести
+      description: Точные шаги + минимальный набор модов (желательно ни одного).
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидаемое поведение
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Фактическое поведение
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Логи и трейсы
+      description: Приложите содержимое `logs/latest.log`, stacktrace, crash-report.
+      render: shell
