@@ -109,7 +109,48 @@ public final class SyntheticProviders {
     }
 
     static Optional<Version> resolveMinecraftVersion(BootOptions options) {
-        return options.minecraftVersion().flatMap(SyntheticProviders::tryCanonicalize);
+        Optional<Version> explicit = options.minecraftVersion().flatMap(SyntheticProviders::tryCanonicalize);
+        if (explicit.isPresent()) return explicit;
+        return detectMinecraftVersionFromClasspath();
+    }
+
+    /**
+     * Minecraft client JAR contains {@code version.json} at the root with
+     * {@code {"id":"1.21.1", ...}}. If the game is on the classpath we can
+     * read this file and extract the version automatically.
+     */
+    private static Optional<Version> detectMinecraftVersionFromClasspath() {
+        try {
+            ClassLoader cl = ClassLoader.getSystemClassLoader();
+            try (InputStream in = cl.getResourceAsStream("version.json")) {
+                if (in == null) return Optional.empty();
+                String json = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                String id = extractJsonString(json, "id");
+                if (id == null) return Optional.empty();
+                LOG.info("Vida: auto-detected minecraft version '{}' from classpath version.json", id);
+                return tryCanonicalize(id);
+            }
+        } catch (Exception ex) {
+            LOG.warn("Vida: failed to detect minecraft version from classpath ({})", ex.toString());
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Minimal JSON string field extractor — avoids pulling a JSON library
+     * into the boot path. Looks for {@code "key" : "value"} in the input.
+     */
+    static String extractJsonString(String json, String key) {
+        String needle = "\"" + key + "\"";
+        int ki = json.indexOf(needle);
+        if (ki < 0) return null;
+        int colon = json.indexOf(':', ki + needle.length());
+        if (colon < 0) return null;
+        int open = json.indexOf('"', colon + 1);
+        if (open < 0) return null;
+        int close = json.indexOf('"', open + 1);
+        if (close < 0) return null;
+        return json.substring(open + 1, close);
     }
 
     static Version resolveJavaVersion() {
