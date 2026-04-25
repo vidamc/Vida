@@ -57,4 +57,5 @@ jobs:
           GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
         run: |
           set -euxo pipefail
-          ./gradlew --no-daemon :gradle-plugin:publishPlugins
+          # publishPlugins пока не совместим с configuration cache в этом дереве.
+          ./gradlew --no-daemon --no-configuration-cache :gradle-plugin:publishPlugins

@@ -38,6 +38,9 @@ dependencies {
 }
 
 gradlePlugin {
+    // Обязательно для com.gradle.plugin-publish (иначе «Website URL not set»).
+    website.set("https://github.com/vidamc/Vida")
+    vcsUrl.set("https://github.com/vidamc/Vida.git")
     plugins {
         create("vidaMod") {
             id = "dev.vida.mod"
