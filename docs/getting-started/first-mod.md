@@ -1,35 +1,29 @@
 # Первый мод за 10 минут
 
-К концу этого руководства у вас будет рабочий мод на Vida, который:
+К концу руководства — рабочий мод, который:
 
-- регистрируется как `miaventura:v0.1.0`,
-- подписывается на `LatidoPulso` (тик сервера),
-- регистрирует один блок в `Catalogo`,
-- читает настройку из `Ajustes`.
+- подключается к платформе по BOM;
+- реализует `VidaMod` с подпиской на `LatidoPulso`;
+- регистрирует пример блока через `RegistroBloques`;
+- читает настройку из `Ajustes` типизированно.
 
-Предполагается, что [dev-окружение](./dev-environment.md) уже настроено.
+Нужно: [dev-окружение](./dev-environment.md) (JDK 21, Gradle).
 
-## 1. Создаём проект
+## 1. Проект
 
-Готовый минимальный Gradle-проект с BOM и одним классом `VidaMod` — в [`templates/starter-mod`](../../templates/starter-mod/README.md) (копируйте каталог и переименуйте id/пакет).
+Опора — **[`templates/starter-mod`](../../templates/starter-mod/README.md)**: скопируйте каталог, задайте `vida.platform.version` / `vida.plugin.version` в `gradle.properties` (как в шаблоне) и при необходимости переименуйте `id` мода, пакет и класс entrypoint.
 
-```bash
-mkdir miaventura && cd miaventura
-gradle init --type java-application --java-version 21 \
-  --dsl kotlin --package com.ejemplo --project-name miaventura --no-split-project
-```
+Альтернатива: свой Gradle-проект с плагином `id("dev.vida.mod")` — см. [dev-environment, вариант B](./dev-environment.md#вариант-b-разработка-мода) и [modder-toolkit](../guides/modder-toolkit.md).
 
-Замените `build.gradle.kts` на шаблон из [dev-environment.md](./dev-environment.md#вариант-b-разработка-мода).
+## 2. Точка входа
 
-## 2. Главный класс
-
-`src/main/java/com/ejemplo/MiAventura.java`:
+`src/main/java/com/ejemplo/miaventura/MiAventura.java`:
 
 ```java
-package com.ejemplo;
+package com.ejemplo.miaventura;
 
-import dev.vida.base.VidaMod;
 import dev.vida.base.ModContext;
+import dev.vida.base.VidaMod;
 import dev.vida.base.latidos.Prioridad;
 import dev.vida.base.latidos.eventos.LatidoPulso;
 
@@ -37,41 +31,42 @@ public final class MiAventura implements VidaMod {
 
     @Override
     public void iniciar(ModContext ctx) {
-        ctx.log().info("¡Hola, soy {} v{}!", ctx.id(), ctx.version());
+        ctx.log().info("¡Hola, {} v{}!", ctx.metadata().nombre(), ctx.version());
 
         ctx.latidos().suscribir(LatidoPulso.TIPO, Prioridad.NORMAL, pulso -> {
-            if (pulso.tickActual() % 20 == 0) {
-                ctx.log().debug("secondly tick {}", pulso.tickActual());
+            if (pulso.tickActual() % 20L == 0L) {
+                ctx.log().debug("tick de un segundo: {}", pulso.tickActual());
             }
         });
     }
 }
 ```
 
-`VidaMod.iniciar` вызывается один раз сразу после загрузки классов мода. Всё, что связано с регистрацией контента и подпиской на события, идёт сюда. Контракт — `[VidaMod](../modules/base.md#vidamod)`.
+`VidaMod.iniciar` вызывается один раз после загрузки классов мода. Подписки на Latidos и регистрация в Catalogo — обычно здесь. См. [VidaMod](../modules/base.md#vidamod).
 
 ## 3. Манифест
 
-Плагин генерирует `vida.mod.json` из DSL — вам ничего писать руками не нужно. По умолчанию в манифест подставляется зависимость на платформу `vida` (см. `injectDefaultVidaDependency` в [modder-toolkit](../guides/modder-toolkit.md)); при необходимости переопределите диапазон или отключите автоподстановку. Убедитесь, что в `build.gradle.kts` прописано:
+Плагин `dev.vida.mod` генерирует `vida.mod.json` в ресурсы; при `injectDefaultVidaDependency` в зависимости подставляется `vida` (диапазон — см. [modder-toolkit](../guides/modder-toolkit.md)). Пример `vida { mod { ... } }` (идентично идее шаблона):
 
 ```kotlin
 vida {
+    injectDefaultVidaDependency.set(true)
     mod {
         id.set("miaventura")
         displayName.set("Mi Aventura")
+        description.set("Ejemplo")
         authors.add("Ana")
-        entrypoint.set("com.ejemplo.MiAventura")
+        license.set("Apache-2.0")
+        entrypoint.set("com.ejemplo.miaventura.MiAventura")
     }
 }
 ```
-
-Собрать:
 
 ```bash
 ./gradlew vidaGenerateManifest vidaValidateManifest build
 ```
 
-В `build/generated/vida/resources/vida.mod.json` появится:
+Итоговый фрагмент (точные поля зависят от версии плагина — детали в [схеме `vida.mod.json`](../reference/manifest-schema.md)):
 
 ```json
 {
@@ -79,41 +74,41 @@ vida {
   "id": "miaventura",
   "version": "0.1.0",
   "name": "Mi Aventura",
-  "authors": [{"name": "Ana"}],
-  "entrypoints": { "main": "com.ejemplo.MiAventura" },
-  "dependencies": {},
-  "vifada": {},
-  "puertas": [],
-  "modules": [],
-  "incompatibilities": [],
-  "custom": {}
+  "authors": [{ "name": "Ana" }],
+  "entrypoints": { "main": "com.ejemplo.miaventura.MiAventura" },
+  "dependencies": {
+    "required": { "vida": "^1.0.0" }
+  },
+  "vifada": { "morphs": [] }
 }
 ```
 
-Полная [схема манифеста](../reference/manifest-schema.md).
+## 4. Блок (`vida-bloque`)
 
-## 4. Добавляем блок
+Реестр блоков — [RegistroBloques](../modules/bloque.md#registrobloques) поверх [Catalogo](../guides/catalogo.md), не сырой `Catalogo` без обёртки.
 
 ```java
-import dev.vida.base.catalogo.Catalogo;
-import dev.vida.base.catalogo.CatalogoClave;
-// import Bloque из будущего vida-bloque; пока — заглушка
+import dev.vida.bloque.Bloque;
+import dev.vida.bloque.MaterialBloque;
+import dev.vida.bloque.PropiedadesBloque;
+import dev.vida.bloque.registro.RegistroBloques;
+import dev.vida.core.Identifier;
 
-@Override
-public void iniciar(ModContext ctx) {
-    Catalogo<Bloque> bloques = ctx.catalogos().obtener(Bloque.CATALOGO);
-    bloques.registrar(
-        CatalogoClave.de("miaventura", "espada_sagrada"),
-        new Bloque(Bloque.Propiedades.piedra())
-    );
-}
+// dentro de iniciar:
+RegistroBloques registro = RegistroBloques.conectar(ctx.catalogos(), "miaventura");
+Bloque roca = new Bloque(
+    Identifier.of("miaventura", "piedra_santa"),
+    PropiedadesBloque.con(MaterialBloque.PIEDRA).dureza(2.0f).construir());
+registro.registrarOExigir(roca);
 ```
 
-Модуль `vida-bloque` пока в разработке — реальный пример появится вместе с ним. Пока используйте `Catalogo` для кастомных, не-vanilla реестров (например, ваших внутренних типов).
+В `build.gradle.kts` к зависимостям добавьте (через тот же BOM, что и `base`):
 
-## 5. Читаем настройку
+```kotlin
+compileOnly("dev.vida:bloque")
+```
 
-Моды получают типизированный `Ajustes` через `ctx.ajustes()`:
+## 5. Настройка (`Ajustes`)
 
 ```java
 import dev.vida.base.ajustes.Ajuste;
@@ -123,33 +118,29 @@ int distancia = ctx.ajustes().valor(
 );
 ```
 
-Файл `run/config/miaventura.toml`:
+`run/config/miaventura.toml` (путь к профилю может отличаться в зависимости от лаунчера):
 
 ```toml
 [render]
 distance = 48
 ```
 
-Значение валидируется по диапазону при первом чтении. Подробнее — [guides/ajustes.md](../guides/ajustes.md).
+Подробнее: [guides/ajustes.md](../guides/ajustes.md).
 
-## 6. Запускаем
+## 6. Запуск
 
 ```bash
 ./gradlew vidaRun
 ```
 
-Плагин запустит dev-клиент с `-javaagent` и вашим JAR в `mods/`. В логе увидите:
+`vidaRun` — задача плагина: клиент/агент и `mods` настраиваются в DSL (см. [gradle-plugin](../../gradle-plugin/src/main/java/dev/vida/gradle/package-info.java)). В логе должна появиться строка инициализации мода.
 
-```
-[INFO ] vida.mod.miaventura — ¡Hola, soy miaventura v0.1.0!
-```
+## 7. Дальше
 
-## 7. Что дальше
+- [Latidos](../guides/latidos.md) — приоритеты, `Ejecutor`, аннотации.
+- [Catalogo](../guides/catalogo.md) — `CatalogoClave`, freeze.
+- [Ajustes](../guides/ajustes.md) — профили, синхронизация.
+- [Vifada](../guides/vifada.md) — Vifada-морфы.
+- [API stability](../reference/api-stability.md) — `@Stable` / `@Preview` / `@Internal`.
 
-- [Latidos](../guides/latidos.md) — подписки, приоритеты, кастомные события.
-- [Catalogo](../guides/catalogo.md) — регистрация контента, `CatalogoClave`, заморозка.
-- [Ajustes](../guides/ajustes.md) — профили, синхронизация клиент↔сервер.
-- [Vifada](../guides/vifada.md) — модификация байткода Minecraft.
-- [API stability](../reference/api-stability.md) — какие аннотации `@Stable` / `@Preview` ставить на свои публичные классы.
-
-Шаблон выше — в репозитории `[vida-examples/miaventura](https://github.com/vidamc/Vida)` (в работе). Он же используется в integration-тестах `gradle-plugin`.
+Шаблон с исходниками: [`templates/starter-mod`](../../templates/starter-mod).
