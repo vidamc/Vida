@@ -5,7 +5,7 @@
 #    * fat-jar (vida-installer-X.Y.Z.jar)           — универсальный инсталлятор
 #    * vida-loader-X.Y.Z.jar                        — загрузчик (Java-агент)
 #    * vida-core/base/manifest/...                   — API-модули
-#    * vida-saciedad/senda                         — моды (при наличии в дереве)
+#    * vida-saciedad / vida-senda (опционально)  — если каталоги mods/* в дереве
 #    * SHA256SUMS / SHA512SUMS
 #    * CycloneDX SBOM (Syft → .cdx.json)
 #    * *.sig / *.pem                                — Sigstore keyless подписи
@@ -79,6 +79,22 @@ jobs:
             [ -n "$src" ] && cp "$src" "dist/vida-${name}-${v}.jar"
           }
 
+          # Моды из поддерева mods/ подключаются в Gradle только при наличии каталога — не вызывать ls по отсутствующим путям.
+          copy_jar_if_present() {
+            local module="$1" name="$2"
+            local d="${module}/build/libs"
+            [ -d "$d" ] || return 0
+            shopt -s nullglob
+            local -a jars=( "$d"/${name}-*.jar )
+            shopt -u nullglob
+            local f
+            for f in "${jars[@]}"; do
+              [[ "$f" =~ -(thin|sources|javadoc|jmh)\.jar$ ]] && continue
+              cp "$f" "dist/vida-${name}-${v}.jar"
+              return 0
+            done
+          }
+
           # Installer (fat-jar)
           fat=$(ls installer/build/libs/installer-*.jar \
               | grep -Ev '\-(thin|sources|javadoc)\.jar$' | head -n1)
@@ -106,9 +122,9 @@ jobs:
           copy_jar render render
           copy_jar red red
 
-          # Mods
-          copy_jar mods/saciedad saciedad
-          copy_jar mods/senda senda
+          # Mods (только если каталоги есть в checkout)
+          copy_jar_if_present mods/saciedad saciedad
+          copy_jar_if_present mods/senda senda
 
           ls -la dist
 
