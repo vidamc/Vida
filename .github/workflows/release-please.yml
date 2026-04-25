@@ -1,20 +1,25 @@
 # -----------------------------------------------------------------------------
 #  release-please + auto-release pipeline
 #
-#  1. Push в main → release-please создаёт/обновляет Release PR
-#     (CHANGELOG + version.txt bump). Auto-merge включается сразу.
-#  2. Release PR проходит CI → авто-мержится в main.
-#  3. Следующий push в main → release-please видит merged release PR →
-#     создаёт тег vX.Y.Z и GitHub Release.
-#  4. release.yml реагирует на событие "release created" → собирает и
-#     прикрепляет JAR-артефакты.
+#  1. Push в main → сначала полностью отрабатывает workflow «CI».
+#  2. Только при успехе CI (все job’ы, включая installer-smoke и jdk-matrix) —
+#     release-please создаёт/обновляет Release PR (CHANGELOG + version.txt).
+#     Auto-merge на этом PR включается здесь.
+#  3. Release PR снова проходит CI → авто-мерж в main.
+#  4. Следующий push в main после мерджа → пункты 1–2; release-please может
+#     создать тег vX.Y.Z и GitHub Release.
+#  5. release.yml — по событию release → JAR-артефакты.
+#
+#  Ручной прогон: workflow_dispatch (без ожидания CI, на ответственность
+#  того, кто нажал).
 # -----------------------------------------------------------------------------
 
 name: release-please
 
 on:
-  push:
-    branches: [main]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
   workflow_dispatch: {}
 
 permissions:
@@ -30,6 +35,12 @@ jobs:
   release-please:
     name: Prepare / publish release
     runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main')
     steps:
       - name: Run release-please
         id: release-please
