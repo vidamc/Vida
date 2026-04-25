@@ -8,6 +8,7 @@
 
 plugins {
     id("vida.library-conventions")
+    id("vida.maven-publish")
 }
 
 description = "Dependency resolver: backtracking search over SemVer ranges with provides/incompatibilities."

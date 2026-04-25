@@ -3,6 +3,7 @@
  */
 plugins {
     id("vida.library-conventions")
+    id("vida.maven-publish")
 }
 
 description = "Escultores: low-level class transformers (byte[] → byte[])."

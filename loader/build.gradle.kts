@@ -8,6 +8,7 @@
  */
 plugins {
     id("vida.library-conventions")
+    id("vida.maven-publish")
 }
 
 description = "Vida runtime: Java Agent, class transformers, classloader hierarchy."

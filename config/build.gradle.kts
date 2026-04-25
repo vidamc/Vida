@@ -4,6 +4,7 @@
 
 plugins {
     id("vida.library-conventions")
+    id("vida.maven-publish")
 }
 
 description = "Ajustes — typed configuration engine with profiles and deep merging."

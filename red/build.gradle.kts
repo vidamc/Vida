@@ -6,6 +6,7 @@
  */
 plugins {
     id("vida.library-conventions")
+    id("vida.maven-publish")
 }
 
 description = "Vida networking API: PaqueteCliente/PaqueteServidor, auto record codecs, back-pressure."

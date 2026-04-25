@@ -1,12 +1,37 @@
 /*
  * Корневой build-скрипт.
  *
- * Ничего не публикует и ничего не собирает сам — все сборочные действия
- * делегированы подмодулям через convention-плагины `vida.*`.
+ * Сборка делегирована подмодулям через convention-плагины `vida.*`.
+ * Публикация в Maven Central: io.github.gradle-nexus.publish-plugin + подпись на подпроектах.
  */
 
 plugins {
     base
+    alias(libs.plugins.nexus.publish)
+}
+
+nexusPublishing {
+    packageGroup.set("dev.vida")
+    repositories {
+        sonatype {
+            nexusUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/service/local/"))
+            snapshotRepositoryUrl.set(uri("https://central.sonatype.com/repository/maven-snapshots/"))
+            username.set(
+                providers
+                    .environmentVariable("SONATYPE_TOKEN_USERNAME")
+                    .orElse(providers.environmentVariable("OSSRH_USERNAME"))
+                    .orElse(providers.gradleProperty("sonatypeUsername"))
+                    .orElse(""),
+            )
+            password.set(
+                providers
+                    .environmentVariable("SONATYPE_TOKEN_PASSWORD")
+                    .orElse(providers.environmentVariable("OSSRH_PASSWORD"))
+                    .orElse(providers.gradleProperty("sonatypePassword"))
+                    .orElse(""),
+            )
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

@@ -3,6 +3,7 @@
  */
 plugins {
     id("vida.library-conventions")
+    id("vida.maven-publish")
 }
 
 description = "Vida Fuente: data-driven block/item/recipe parsing from mod packs."

@@ -8,6 +8,7 @@
 
 plugins {
     id("vida.library-conventions")
+    id("vida.maven-publish")
 }
 
 description = "Vifada: bytecode transformer with @VifadaMorph / @VifadaInject / @VifadaOverwrite."

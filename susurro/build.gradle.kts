@@ -8,6 +8,7 @@
  */
 plugins {
     id("vida.library-conventions")
+    id("vida.maven-publish")
 }
 
 description = "Vida managed thread-pool: Susurro, Tarea, HiloPrincipal."

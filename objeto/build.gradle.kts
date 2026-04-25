@@ -10,6 +10,7 @@
  */
 plugins {
     id("vida.library-conventions")
+    id("vida.maven-publish")
 }
 
 description = "Vida public item API: Objeto, PropiedadesObjeto, ComponenteObjeto, Herramienta."

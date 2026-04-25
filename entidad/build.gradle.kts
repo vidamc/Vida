@@ -6,6 +6,7 @@
  */
 plugins {
     id("vida.library-conventions")
+    id("vida.maven-publish")
 }
 
 description = "Vida public entity API: Entidad, PropiedadesEntidad, entity data-components."

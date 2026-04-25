@@ -1,0 +1,75 @@
+# ОТЛОЖЕНО: пока ориентируемся только на Gradle Plugin Portal (`publish-gradle-plugin.yml`).
+# Когда будет готов verified namespace на central.sonatype.com и GPG — уберите `if: false` у job ниже.
+#
+# Публикация артефактов dev.vida:* (библиотеки + BOM + maven-публикации :gradle-plugin) в Maven Central
+# через Sonatype OSS / Central Portal API (см. корневой build.gradle.kts — nexusPublishing).
+#
+# Секреты (GitHub Environment `gradle-maven` — рядом с ключами Portal можно добавить Sonatype + GPG):
+#   SONATYPE_TOKEN_USERNAME + SONATYPE_TOKEN_PASSWORD — токен https://central.sonatype.com/
+#   либо OSSRH_USERNAME + OSSRH_PASSWORD (legacy)
+#   SIGNING_PRIVATE_KEY — ASCII-armored GPG private key (одна строка или с \n)
+#   SIGNING_PASSWORD — пароль ключа (если есть)
+#
+# Запуск вручную после релиза версии без -SNAPSHOT в version.txt.
+
+name: publish-maven-central
+
+on:
+  workflow_dispatch:
+    inputs:
+      close_and_release:
+        description: "После upload вызвать closeAndReleaseSonatypeStagingRepository"
+        required: false
+        default: true
+        type: boolean
+
+concurrency:
+  group: publish-maven-central-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sonatype:
+    if: false
+    name: Maven Central (Sonatype)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: gradle-maven
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          validate-wrappers: true
+
+      - name: Publish to Sonatype staging
+        shell: bash
+        env:
+          SONATYPE_TOKEN_USERNAME: ${{ secrets.SONATYPE_TOKEN_USERNAME }}
+          SONATYPE_TOKEN_PASSWORD: ${{ secrets.SONATYPE_TOKEN_PASSWORD }}
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          SIGNING_PRIVATE_KEY: ${{ secrets.SIGNING_PRIVATE_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          set -euxo pipefail
+          ./gradlew --no-daemon publishToSonatype
+
+      - name: Close and release staging
+        if: ${{ inputs.close_and_release }}
+        shell: bash
+        env:
+          SONATYPE_TOKEN_USERNAME: ${{ secrets.SONATYPE_TOKEN_USERNAME }}
+          SONATYPE_TOKEN_PASSWORD: ${{ secrets.SONATYPE_TOKEN_PASSWORD }}
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+        run: |
+          set -euxo pipefail
+          ./gradlew --no-daemon closeAndReleaseSonatypeStagingRepository

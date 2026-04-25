@@ -3,17 +3,19 @@
  *
  * id: dev.vida.mod
  *
- * Добавляет DSL `vida { ... }`, генерирует `vida.mod.json` из него,
- * валидирует манифест через :manifest, умеет ремаппить jar через
- * :cartografia и запускать игру с модом.
- *
- * Публикуется как самостоятельный плагин: consumers могут писать
- * `plugins { id("dev.vida.mod") version "..." }`.
+ * Публикуется в Gradle Plugin Portal (`publishPlugins`) и как Maven-публикации
+ * (pluginMaven + marker) для Sonatype / локальной проверки POM.
  */
+import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.plugins.signing.Sign
+import org.gradle.plugins.signing.SigningExtension
+
 plugins {
     id("vida.java-conventions")
     id("vida.test-conventions")
     `java-gradle-plugin`
+    signing
+    alias(libs.plugins.gradle.plugin.publish)
 }
 
 description = "Vida Gradle plugin for mod authors: manifest generation, remapping, launch."
@@ -44,6 +46,52 @@ gradlePlugin {
             description = "Build, remap and run Vida mods for Minecraft."
             tags.set(listOf("vida", "minecraft", "modding"))
         }
+    }
+}
+
+publishing {
+    publications.withType<MavenPublication>().configureEach {
+        pom {
+            name.set("Vida Gradle Plugin (dev.vida.mod)")
+            description.set(project.description)
+            url.set("https://github.com/vidamc/Vida")
+            licenses {
+                license {
+                    name.set("Apache License 2.0")
+                    url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                }
+            }
+            scm {
+                connection.set("scm:git:https://github.com/vidamc/Vida.git")
+                developerConnection.set("scm:git:ssh://git@github.com/vidamc/Vida.git")
+                url.set("https://github.com/vidamc/Vida")
+            }
+            developers {
+                developer {
+                    id.set("vida")
+                    name.set("The Vida Project Authors")
+                    url.set("https://github.com/vidamc/Vida")
+                }
+            }
+        }
+    }
+}
+
+extensions.configure<SigningExtension>("signing") {
+    val signingKey = providers.environmentVariable("SIGNING_PRIVATE_KEY")
+    val signingPassword = providers.environmentVariable("SIGNING_PASSWORD")
+    setRequired(signingKey.map { it.isNotBlank() }.orElse(false))
+    if (signingKey.isPresent && signingKey.get().isNotBlank()) {
+        useInMemoryPgpKeys(signingKey.get(), signingPassword.orNull)
+        val pubs = project.extensions.getByType<org.gradle.api.publish.PublishingExtension>().publications
+        sign(pubs)
+    }
+}
+
+// com.gradle.plugin-publish может создавать Sign-задачи — без ключа не выполнять.
+tasks.withType<Sign>().configureEach {
+    onlyIf("SIGNING_PRIVATE_KEY present") {
+        providers.environmentVariable("SIGNING_PRIVATE_KEY").orNull?.isNotBlank() == true
     }
 }
 

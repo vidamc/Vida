@@ -4,6 +4,7 @@
 
 plugins {
     id("vida.library-conventions")
+    id("vida.maven-publish")
 }
 
 description = "Manifest schema (vida.mod.json) + Vida-JSON streaming parser."

@@ -10,6 +10,7 @@
  */
 plugins {
     id("vida.library-conventions")
+    id("vida.maven-publish")
 }
 
 description = "Vida access-wideners: .ptr parser and ASM applier."

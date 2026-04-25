@@ -13,6 +13,7 @@
  */
 plugins {
     id("vida.library-conventions")
+    id("vida.maven-publish")
 }
 
 description = "Vida public modding API: lifecycle, events (Latidos), registries (Catalogo), typed settings (Ajustes)."

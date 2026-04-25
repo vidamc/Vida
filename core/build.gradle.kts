@@ -6,6 +6,7 @@
 
 plugins {
     id("vida.library-conventions")
+    id("vida.maven-publish")
 }
 
 description = "Vida core primitives: Identifier, Version, SemVer, Log, Result, Either."

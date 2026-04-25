@@ -6,6 +6,7 @@
  */
 plugins {
     id("vida.library-conventions")
+    id("vida.maven-publish")
 }
 
 description = "Vida render API: ModeloBloque, ModeloEntidad, TextureAtlas, RenderPipeline."

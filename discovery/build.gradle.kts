@@ -5,6 +5,7 @@
 
 plugins {
     id("vida.library-conventions")
+    id("vida.maven-publish")
 }
 
 description = "Mod discovery: ZIP readers, ModScanner, nested JARs, mods.idx cache."

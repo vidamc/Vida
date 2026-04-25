@@ -9,6 +9,7 @@
  */
 plugins {
     id("vida.library-conventions")
+    id("vida.maven-publish")
 }
 
 description = "Vida profiler: lightweight JFR-based sampling profiler with HTML reports."

@@ -10,6 +10,7 @@
 
 plugins {
     id("vida.library-conventions")
+    id("vida.maven-publish")
 }
 
 description = "Cartografía — name mapping model, Proguard reader, .ctg format, ASM Remapper adapter."

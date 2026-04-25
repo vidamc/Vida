@@ -2,16 +2,18 @@
 
 Готовый скелет мода под Vida: JDK 21, плагин `dev.vida.mod`, BOM `dev.vida:vida-bom`, один класс `VidaMod`.
 
-## Быстрый старт (опубликованные артефакты)
+## Быстрый старт (сейчас — Gradle Plugin Portal)
+
+Пока публикация **`dev.vida:*` в Maven Central** не настроена, платформенные JAR и BOM берите из **`mavenLocal()`** (сборка монорепо Vida) или из composite build (см. ниже). Плагин мода **`dev.vida.mod`** ориентируем на **[Gradle Plugin Portal](https://plugins.gradle.org/)** после первого `publishPlugins` из CI.
 
 1. Скопируйте каталог `starter-mod` в свой репозиторий (или используйте его как подпроект).
-2. Установите в `gradle.properties` одну и ту же линию релиза Vida:
-   - `vida.platform.version` — версия BOM и jar’ов `dev.vida:*` на Maven Central / вашем Nexus.
+2. Установите в `gradle.properties`:
    - `vida.plugin.version` — версия плагина на [Gradle Plugin Portal](https://plugins.gradle.org/).
-3. Опубликуйте BOM локально для проверки без центрального репозитория:
+   - `vida.platform.version` — та же линия релиза, что у артефактов `dev.vida:*` (**пока** из `mavenLocal` после `./gradlew :bom:publishToMavenLocal publishToMavenLocal` в клоне Vida, либо из вашего Nexus).
+3. Пока без Central — опубликуйте BOM и библиотеки в локальный Maven из клона Vida:
    ```bash
    cd /path/to/Vida
-   ./gradlew :bom:publishToMavenLocal
+   ./gradlew publishToMavenLocal
    ```
 4. В проекте шаблона:
    ```bash

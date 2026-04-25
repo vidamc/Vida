@@ -7,6 +7,7 @@
 plugins {
     `java-platform`
     `maven-publish`
+    id("vida.bom-maven-publish")
 }
 
 description = "Vida BOM: aligned versions for dev.vida:* runtime libraries."
@@ -49,19 +50,6 @@ publishing {
     publications {
         register<MavenPublication>("maven") {
             from(components["javaPlatform"])
-            pom {
-                name.set("Vida BOM")
-                description.set(
-                    "Bill of Materials for Vida loader and mod API artifacts (group dev.vida).",
-                )
-                url.set("https://github.com/vidamc/Vida")
-                licenses {
-                    license {
-                        name.set("Apache License 2.0")
-                        url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
-                    }
-                }
-            }
         }
     }
 }
