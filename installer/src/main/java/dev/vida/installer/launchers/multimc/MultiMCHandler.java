@@ -5,8 +5,11 @@
 package dev.vida.installer.launchers.multimc;
 
 import dev.vida.installer.launchers.LauncherKind;
+import dev.vida.installer.launchers.OsPaths;
 import dev.vida.installer.launchers.prism.PrismLikeHandler;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -31,8 +34,12 @@ public final class MultiMCHandler extends PrismLikeHandler {
 
     @Override
     public List<Path> detectDataDirs() {
-        // MultiMC — portable, единого «стандартного» места нет.
-        // Пусть пользователь выбирает каталог вручную.
-        return List.of();
+        List<Path> out = new ArrayList<>();
+        for (Path p : OsPaths.system().multiMcDataDirCandidates()) {
+            if (Files.isDirectory(p) && Files.isDirectory(p.resolve("instances"))) {
+                out.add(p);
+            }
+        }
+        return List.copyOf(out);
     }
 }

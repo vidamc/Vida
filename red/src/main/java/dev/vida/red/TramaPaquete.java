@@ -10,7 +10,7 @@ import java.util.Objects;
 /**
  * Wire-level представление сетевого пакета.
  */
-@ApiStatus.Preview("red")
+@ApiStatus.Stable
 public record TramaPaquete(
         DireccionPaquete direccion,
         String tipoCanonical,

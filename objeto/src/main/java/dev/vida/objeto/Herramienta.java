@@ -19,7 +19,7 @@ import java.util.Set;
  * TipoHerramienta.PICO)), dano=1.0f, velAttack=1.2f}. Конкретная реализация
  * «правильного mining-поведения» лежит в будущем {@code vida-mundo}.
  */
-@ApiStatus.Preview("objeto")
+@ApiStatus.Stable
 public record Herramienta(
         Material material,
         Set<TipoHerramienta> tipos,

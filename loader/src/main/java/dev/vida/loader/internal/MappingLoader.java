@@ -5,13 +5,18 @@
 package dev.vida.loader.internal;
 
 import dev.vida.cartografia.ClassMapping;
+import dev.vida.cartografia.MappingError;
 import dev.vida.cartografia.MappingTree;
 import dev.vida.cartografia.Namespace;
 import dev.vida.cartografia.io.ProguardReader;
 import dev.vida.core.ApiStatus;
 import dev.vida.core.Log;
 import dev.vida.core.Result;
+import dev.vida.loader.profile.PlatformMappingsStrategy;
+import dev.vida.loader.profile.PlatformProfileDescriptor;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.URI;
@@ -20,8 +25,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HexFormat;
 import java.util.Map;
 import java.util.Optional;
 
@@ -29,7 +37,7 @@ import java.util.Optional;
  * Загружает Mojang client mappings и строит карту
  * obfuscated → deobfuscated class names (internal format).
  *
- * <p>Порядок поиска маппингов:
+ * <p>Без {@linkplain PlatformProfileDescriptor профиля платформы} порядок поиска маппингов:
  * <ol>
  *   <li>{@code .minecraft/versions/<ver>/client_mappings.txt}</li>
  *   <li>Любой {@code *.txt} в {@code .minecraft/versions/<ver>/} размером &gt; 100 КБ
@@ -42,6 +50,19 @@ public final class MappingLoader {
 
     private static final Log LOG = Log.of(MappingLoader.class);
 
+    /**
+     * Obfuscated→Mojmap class names plus the parsed {@link MappingTree} for method resolution.
+     */
+    /**
+     * @param fingerprint SHA-256 (hex) текста маппингов или {@code "nomap"}
+     */
+    public record ClientMappingTables(Map<String, String> obfToMojmapClass, MappingTree tree,
+            String fingerprint) {
+        public static ClientMappingTables empty() {
+            return new ClientMappingTables(Map.of(), null, "nomap");
+        }
+    }
+
     private MappingLoader() {}
 
     /**
@@ -52,12 +73,19 @@ public final class MappingLoader {
      * @return карту или пустую Map, если маппинги не удалось загрузить
      */
     public static Map<String, String> loadClassMap(String mcVersion, Path gameDir) {
-        if (mcVersion == null || gameDir == null) return Map.of();
+        return loadClientMappingTables(mcVersion, gameDir).obfToMojmapClass();
+    }
+
+    /**
+     * Loads client mappings: class obf→Mojmap map and the full tree (for morph method names).
+     */
+    public static ClientMappingTables loadClientMappingTables(String mcVersion, Path gameDir) {
+        if (mcVersion == null || gameDir == null) return ClientMappingTables.empty();
 
         Path versionsDir = gameDir.resolve("versions").resolve(mcVersion);
         if (!Files.isDirectory(versionsDir)) {
             LOG.warn("Vida: versions dir not found: {}", versionsDir);
-            return Map.of();
+            return ClientMappingTables.empty();
         }
 
         Optional<Path> mappingFile = findMappingsFile(versionsDir, mcVersion);
@@ -70,10 +98,45 @@ public final class MappingLoader {
 
         if (mappingFile.isEmpty()) {
             LOG.warn("Vida: client mappings not found for MC {}", mcVersion);
-            return Map.of();
+            return ClientMappingTables.empty();
         }
 
-        return parseMappings(mappingFile.get());
+        return parseMappingTables(mappingFile.get());
+    }
+
+    /**
+     * Loads mappings using the profile's mapping strategy when {@code profile} is non-empty.
+     *
+     * <p>{@link PlatformMappingsStrategy#GAME_DIR_PROGUARD} keeps the launcher-directory search;
+     * {@link PlatformMappingsStrategy#CLASSPATH_PROGUARD} reads ProGuard text from the given classpath resource.
+     */
+    public static ClientMappingTables loadClientMappingTables(
+            String mcVersion,
+            Path gameDir,
+            Optional<PlatformProfileDescriptor> profile) {
+        if (profile.isEmpty()) {
+            return loadClientMappingTables(mcVersion, gameDir);
+        }
+        PlatformProfileDescriptor p = profile.get();
+        if (p.mappingsStrategy() == PlatformMappingsStrategy.CLASSPATH_PROGUARD) {
+            return loadClasspathProguardMappings(p.classpathMappingsResource().orElseThrow());
+        }
+        return loadClientMappingTables(mcVersion, gameDir);
+    }
+
+    private static ClientMappingTables loadClasspathProguardMappings(String resourcePath) {
+        ClassLoader cl = MappingLoader.class.getClassLoader();
+        try (InputStream in = cl.getResourceAsStream(resourcePath)) {
+            if (in == null) {
+                LOG.warn("Vida: classpath mappings not found: {}", resourcePath);
+                return ClientMappingTables.empty();
+            }
+            byte[] raw = in.readAllBytes();
+            return parseMappingTablesBytes(raw, resourcePath);
+        } catch (IOException ex) {
+            LOG.warn("Vida: I/O error reading classpath mappings: {}", ex.getMessage());
+            return ClientMappingTables.empty();
+        }
     }
 
     private static Optional<Path> findMappingsFile(Path versionsDir, String mcVersion) {
@@ -141,13 +204,29 @@ public final class MappingLoader {
         }
     }
 
-    private static Map<String, String> parseMappings(Path file) {
-        try (Reader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
-            var result = ProguardReader.read(file.toString(), reader,
-                    Namespace.OBF, Namespace.MOJMAP);
+    private static ClientMappingTables parseMappingTables(Path file) {
+        try {
+            byte[] raw = Files.readAllBytes(file);
+            ClientMappingTables out = parseMappingTablesBytes(raw, file.toString());
+            if (!out.obfToMojmapClass().isEmpty()) {
+                LOG.info("Vida: loaded {} class mappings from {}", out.obfToMojmapClass().size(),
+                        file.getFileName());
+            }
+            return out;
+        } catch (IOException ex) {
+            LOG.warn("Vida: I/O error reading mappings: {}", ex.getMessage());
+            return ClientMappingTables.empty();
+        }
+    }
+
+    private static ClientMappingTables parseMappingTablesBytes(byte[] raw, String label) {
+        String fingerprint = sha256Hex(raw);
+        try (Reader reader = new InputStreamReader(new ByteArrayInputStream(raw), StandardCharsets.UTF_8)) {
+            Result<MappingTree, MappingError> result =
+                    ProguardReader.read(label, reader, Namespace.OBF, Namespace.MOJMAP);
             if (result.isErr()) {
                 LOG.warn("Vida: failed to parse mappings: {}", result.unwrapErr());
-                return Map.of();
+                return ClientMappingTables.empty();
             }
             MappingTree tree = result.unwrap();
             Map<String, String> map = new HashMap<>(tree.size() * 2);
@@ -158,11 +237,19 @@ public final class MappingLoader {
                     map.put(obf, deobf);
                 }
             }
-            LOG.info("Vida: loaded {} class mappings from {}", map.size(), file.getFileName());
-            return Collections.unmodifiableMap(map);
+            return new ClientMappingTables(Collections.unmodifiableMap(map), tree, fingerprint);
         } catch (IOException ex) {
-            LOG.warn("Vida: I/O error reading mappings: {}", ex.getMessage());
-            return Map.of();
+            LOG.warn("Vida: I/O error parsing mapping bytes: {}", ex.getMessage());
+            return ClientMappingTables.empty();
+        }
+    }
+
+    private static String sha256Hex(byte[] raw) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(raw);
+            return HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
         }
     }
 

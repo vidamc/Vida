@@ -34,7 +34,7 @@ import java.util.function.Function;
  *
  * @param <T> тип результата
  */
-@ApiStatus.Preview("susurro")
+@ApiStatus.Stable
 public final class Tarea<T> {
 
     /** Состояние задачи. */

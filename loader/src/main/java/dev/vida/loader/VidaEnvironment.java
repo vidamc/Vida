@@ -7,8 +7,10 @@ package dev.vida.loader;
 import dev.vida.base.LatidoGlobal;
 import dev.vida.base.catalogo.CatalogoManejador;
 import dev.vida.base.latidos.LatidoBus;
+import dev.vida.cartografia.MappingTree;
 import dev.vida.core.ApiStatus;
-import dev.vida.loader.fuente.FuenteContenidoMod;
+import dev.vida.fuente.FuenteContenidoMod;
+import dev.vida.loader.profile.PlatformProfileDescriptor;
 import dev.vida.manifest.ModManifest;
 import java.lang.instrument.Instrumentation;
 import java.time.Instant;
@@ -17,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Иммутабельное рантайм-состояние после успешного бутстрапа Vida.
@@ -24,7 +27,7 @@ import java.util.Objects;
  * <p>Создаётся {@link VidaBoot} или {@link VidaPremain} и хранится в
  * {@link VidaRuntime#current()} для доступа извне.
  */
-@ApiStatus.Preview("loader")
+@ApiStatus.Stable
 public final class VidaEnvironment {
 
     private final BootOptions options;
@@ -38,6 +41,10 @@ public final class VidaEnvironment {
     private final Instrumentation instrumentation; // nullable
     private final LatidoBus latidos;
     private final CatalogoManejador catalogos;
+    /** Mojang {@code client_mappings.txt} разобранный в дерево; пусто если файла не было. */
+    private final MappingTree clientMappings;
+    /** Активный профиль платформы, если был запрошен и успешно загружен. */
+    private final Optional<PlatformProfileDescriptor> platformProfile;
 
     private VidaEnvironment(Builder b) {
         this.options      = Objects.requireNonNull(b.options, "options");
@@ -51,6 +58,8 @@ public final class VidaEnvironment {
         this.instrumentation = b.instrumentation;
         this.latidos      = Objects.requireNonNull(b.latidos, "latidos");
         this.catalogos    = Objects.requireNonNull(b.catalogos, "catalogos");
+        this.clientMappings = b.clientMappings;
+        this.platformProfile = b.platformProfile == null ? Optional.empty() : b.platformProfile;
     }
 
     public BootOptions options()               { return options; }
@@ -64,6 +73,18 @@ public final class VidaEnvironment {
     public Instrumentation instrumentation()   { return instrumentation; }
     public LatidoBus latidos()                 { return latidos; }
     public CatalogoManejador catalogos()       { return catalogos; }
+
+    /** Дерево маппингов клиента (obf ↔ mojmap), если загрузилось из {@code versions/&lt;mc&gt;/client_mappings.txt}. */
+    public Optional<MappingTree> clientMappings() {
+        return Optional.ofNullable(clientMappings);
+    }
+
+    /**
+     * Дескриптор профиля платформы (Cartografía / Vifada / мост), если он был выбран при бутстрапе.
+     */
+    public Optional<PlatformProfileDescriptor> platformProfile() {
+        return platformProfile;
+    }
 
     public static Builder builder() { return new Builder(); }
 
@@ -79,6 +100,8 @@ public final class VidaEnvironment {
         Instrumentation instrumentation;
         LatidoBus latidos;
         CatalogoManejador catalogos;
+        MappingTree clientMappings;
+        Optional<PlatformProfileDescriptor> platformProfile = Optional.empty();
 
         public Builder options(BootOptions v)      { this.options = v; return this; }
         public Builder startedAt(Instant v)        { this.startedAt = v; return this; }
@@ -94,6 +117,12 @@ public final class VidaEnvironment {
         public Builder instrumentation(Instrumentation v)   { this.instrumentation = v; return this; }
         public Builder latidos(LatidoBus v)                 { this.latidos = v; return this; }
         public Builder catalogos(CatalogoManejador v)       { this.catalogos = v; return this; }
+        public Builder clientMappings(MappingTree v)      { this.clientMappings = v; return this; }
+
+        public Builder platformProfile(Optional<PlatformProfileDescriptor> v) {
+            this.platformProfile = v == null ? Optional.empty() : v;
+            return this;
+        }
 
         public VidaEnvironment build() { return new VidaEnvironment(this); }
     }

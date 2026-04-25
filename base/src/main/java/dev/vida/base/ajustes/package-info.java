@@ -24,7 +24,7 @@
  * нарушении — используется {@link dev.vida.base.ajustes.Ajuste#defecto()}
  * и в лог уходит предупреждение.
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 package dev.vida.base.ajustes;
 
 import dev.vida.core.ApiStatus;

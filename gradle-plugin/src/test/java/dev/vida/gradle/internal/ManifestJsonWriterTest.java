@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.*;
 
 import dev.vida.manifest.ManifestParser;
 import dev.vida.manifest.ModManifest;
+import dev.vida.manifest.VifadaConfig;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -64,6 +65,43 @@ final class ManifestJsonWriterTest {
         assertThat(r.isOk()).isTrue();
         assertThat(r.unwrap().description())
                 .hasValue("Line1\nLine2\tTabbed\"Quoted\\backslash");
+    }
+
+    @Test
+    void draft_manifest_supports_low_and_high_level_sections() {
+        ManifestJsonWriter.Draft d = ManifestJsonWriter.Draft.builder()
+                .schema(1)
+                .id("full")
+                .version("2.0.0")
+                .name("Full")
+                .description("")
+                .license("MIT")
+                .authors(List.of("A"))
+                .entryPreLaunch(List.of("pkg.Pre"))
+                .entryMain(List.of("pkg.Main"))
+                .entryClient(List.of("pkg.Cli"))
+                .entryServer(List.of("pkg.Srv"))
+                .dependencies(Map.of("vida", "^1"))
+                .puertas(List.of("meta/access.puertas"))
+                .escultores(List.of("my.Escultor"))
+                .vifadaPackages(List.of("my.mod.mixin"))
+                .vifadaConfig("assets/full/full.vifada.json")
+                .vifadaPriority(VifadaConfig.DEFAULT_PRIORITY + 10)
+                .modules(List.of("vida-bloque"))
+                .build();
+
+        String json = ManifestJsonWriter.toJson(d);
+        var r = ManifestParser.parse(json);
+        assertThat(r.isOk()).as("%s", json).isTrue();
+        ModManifest m = r.unwrap();
+        assertThat(m.entrypoints().preLaunch()).containsExactly("pkg.Pre");
+        assertThat(m.entrypoints().main()).containsExactly("pkg.Main");
+        assertThat(m.entrypoints().client()).containsExactly("pkg.Cli");
+        assertThat(m.entrypoints().server()).containsExactly("pkg.Srv");
+        assertThat(m.vifada().packages()).containsExactly("my.mod.mixin");
+        assertThat(m.vifada().config()).hasValue("assets/full/full.vifada.json");
+        assertThat(m.vifada().priority()).isEqualTo(VifadaConfig.DEFAULT_PRIORITY + 10);
+        assertThat(m.modules()).containsExactly("vida-bloque");
     }
 
     @Test

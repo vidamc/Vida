@@ -14,7 +14,7 @@ import dev.vida.core.ApiStatus;
  * подписчики. {@link #ANTES} / {@link #DESPUES} — тонкие настройки порядка
  * для совместимости между модами.
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public enum Fase {
     ANTES(-1),
     PRINCIPAL(0),

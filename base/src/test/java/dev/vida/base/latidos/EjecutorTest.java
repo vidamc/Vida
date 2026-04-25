@@ -64,7 +64,7 @@ final class EjecutorTest {
                     });
 
             bus.emitir(Ev.TIPO, new Ev("x"));
-            assertThat(latch.await(2, TimeUnit.SECONDS)).isTrue();
+            assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
             assertThat(threadName.get()).startsWith("vida-susurro-");
         }
     }

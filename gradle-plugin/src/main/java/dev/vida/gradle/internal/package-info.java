@@ -7,4 +7,7 @@
  * Внутренние утилиты Gradle-плагина: не публичный API, может меняться
  * в любой версии.
  */
+@ApiStatus.Internal
 package dev.vida.gradle.internal;
+
+import dev.vida.core.ApiStatus;

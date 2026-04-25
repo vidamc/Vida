@@ -9,7 +9,7 @@ import dev.vida.core.ApiStatus;
 /**
  * Контекст вызова shader-hook в render pipeline.
  */
-@ApiStatus.Preview("render")
+@ApiStatus.Stable
 public record ContextoShader(long frameId, long tiempoNanos, ShaderHook.Etapa etapa) {
 
     public ContextoShader {

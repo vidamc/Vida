@@ -24,7 +24,7 @@ import java.util.Objects;
  * @param susurroPendientes текущее число ожидающих задач
  * @param susurroCompletadas кумулятивное число завершённых задач
  */
-@ApiStatus.Preview("vigia")
+@ApiStatus.Stable
 public record Resumen(
         Duration duracion,
         long muestras,
@@ -47,7 +47,7 @@ public record Resumen(
      * @param muestras количество samples, попавших в этот метод
      * @param porcentaje доля от общего числа samples (0.0–100.0)
      */
-    @ApiStatus.Preview("vigia")
+    @ApiStatus.Stable
     public record MetodoMuestra(String metodo, long muestras, double porcentaje) {
         public MetodoMuestra {
             Objects.requireNonNull(metodo, "metodo");
@@ -61,7 +61,7 @@ public record Resumen(
      * @param suscriptores  количество подписчиков
      * @param emisiones     количество emit-вызовов за период (если трекается)
      */
-    @ApiStatus.Preview("vigia")
+    @ApiStatus.Stable
     public record LatidoMetrica(String nombre, int suscriptores, long emisiones) {
         public LatidoMetrica {
             Objects.requireNonNull(nombre, "nombre");

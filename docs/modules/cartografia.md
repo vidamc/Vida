@@ -54,12 +54,18 @@ try (Reader r = Files.newBufferedReader(path)) {
 Используется как промежуточное хранилище: инсталлятор/Gradle-плагин конвертируют Proguard в `.ctg` и кладут рядом с модом.
 
 ```java
-CtgReader.read(path, tree -> {
-    // вызывается с готовым MappingTree
-});
+try (InputStream in = Files.newInputStream(path)) {
+    Result<MappingTree, MappingError> r = CtgReader.read(path.getFileName().toString(), in);
+}
 ```
 
-Спецификация формата — в `cartografia/src/main/java/dev/vida/cartografia/io/CtgFormat.java` (со схемой в Javadoc).
+#### Версия файла и обновление между релизами Minecraft
+
+Публичные константы: `dev.vida.cartografia.io.CtgMappingFormat` — `VERSION_MAJOR`, `VERSION_MINOR`, `MAX_SUPPORTED_MINOR`. Заголовок каждого `.ctg` хранит major/minor; при несовпадении `major` или при `minor > MAX_SUPPORTED_MINOR` чтение возвращает `MappingError.UnsupportedVersion` с номером версии из файла (не «немая» ошибка).
+
+Процедура обновления при новой версии Minecraft: получить свежий Proguard от поставщика версии → прогнать через конвертер в `.ctg` инструментами Vida → закоммитить артефакт под именем, включающим версию игры; при смене формата `.ctg` обновить зависимость `vida-cartografia` до релиза, где поднят `MAX_SUPPORTED_MINOR`, и пересобрать `.ctg`.
+
+Полная бинарная схема секций — во внутреннем `CtgFormat` и в Javadoc `CtgReader`/`CtgWriter`.
 
 ## `CartografiaRemapper` (ASM)
 
@@ -119,6 +125,15 @@ Tiny-формат и его варианты оптимизированы под
 - `FormatError` — синтаксис Proguard/`.ctg` сломан.
 - `DuplicateEntry` — в одном файле два раза указан один класс/поле/метод.
 - `NamespaceNotFound` — запрошен `Namespace`, которого в `MappingTree` нет.
+
+## Поколения платформы и поле `mappingMode`
+
+Рантайм-источник правды для дропов Minecraft и правил импорта Cartografía задаётся **профилем платформы** (`platform-profiles/generations/.../profile.json`), не этим модулем напрямую.
+
+- Для семантической линии **1.21.x** поколение `LEGACY_121`: по умолчанию стратегия `GAME_DIR_PROGUARD` читает Proguard-текст из дерева лаунчера (`client_mappings.txt` под версией клиента).
+- Для календарной линии **26.x** поколение `CALENDAR_26`: могут понадобиться другие пайплайны импорта и артефакты — см. профиль и поле **`mappingMode`** в JSON (ярлык политики для будущего связывания с парсерами Cartografía).
+
+Импорт в `MappingLoader` и связка с деревом имён для `MorphMethodResolution` описаны в [modules/platform-profiles.md](./platform-profiles.md) и [architecture/classloading.md](../architecture/classloading.md).
 
 ## Что читать дальше
 

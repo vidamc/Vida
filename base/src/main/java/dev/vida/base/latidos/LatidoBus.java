@@ -21,7 +21,7 @@ import dev.vida.core.ApiStatus;
  * {@link DefaultLatidoBus} использует copy-on-write-структуры, так что
  * {@link #emitir} не блокирует регистрацию новых подписчиков и наоборот.
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public interface LatidoBus {
 
     /**

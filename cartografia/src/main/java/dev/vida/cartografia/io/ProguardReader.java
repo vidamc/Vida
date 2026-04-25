@@ -16,9 +16,11 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Читатель Mojang-овского proguard-формата мэппингов.
@@ -64,8 +66,31 @@ public final class ProguardReader {
      * @param obfNs namespace для обфусцированных имён (source дерева)
      * @param namedNs namespace для читаемых Mojang-имён
      */
+    /**
+     * Как {@link #read}, плюс список внутренних имён классов из дескрипторов,
+     * не сопоставившихся ни с одним классом в первом проходе.
+     */
+    public static Result<ProguardImportDiagnostics, MappingError> readWithDiagnostics(
+            String sourceName, Reader in, Namespace obfNs, Namespace namedNs) {
+        return readImpl(sourceName, in, obfNs, namedNs, true);
+    }
+
     public static Result<MappingTree, MappingError> read(
             String sourceName, Reader in, Namespace obfNs, Namespace namedNs) {
+        Result<ProguardImportDiagnostics, MappingError> r =
+                readImpl(sourceName, in, obfNs, namedNs, false);
+        if (r.isErr()) {
+            return Result.err(r.unwrapErr());
+        }
+        return Result.ok(r.unwrap().tree());
+    }
+
+    private static Result<ProguardImportDiagnostics, MappingError> readImpl(
+            String sourceName,
+            Reader in,
+            Namespace obfNs,
+            Namespace namedNs,
+            boolean collectDiagnostics) {
         Objects.requireNonNull(sourceName, "sourceName");
         Objects.requireNonNull(in, "in");
         Objects.requireNonNull(obfNs, "obfNs");
@@ -109,7 +134,15 @@ public final class ProguardReader {
             return Result.err(new MappingError.IoError(sourceName, e.getMessage()));
         }
 
-        return buildTree(rawClasses, namedToObf, obfNs, namedNs);
+        Set<String> unresolved = collectDiagnostics ? new LinkedHashSet<>(64) : null;
+        Result<MappingTree, MappingError> tree = buildTree(rawClasses, namedToObf, obfNs, namedNs, unresolved);
+        if (tree.isErr()) {
+            return Result.err(tree.unwrapErr());
+        }
+        List<String> report = unresolved == null
+                ? List.of()
+                : List.copyOf(unresolved);
+        return Result.ok(new ProguardImportDiagnostics(tree.unwrap(), report));
     }
 
     // =============================================================== stage 1
@@ -226,8 +259,11 @@ public final class ProguardReader {
     // =============================================================== stage 2
 
     private static Result<MappingTree, MappingError> buildTree(
-            List<RawClass> raw, Map<String, String> namedToObf,
-            Namespace obfNs, Namespace namedNs) {
+            List<RawClass> raw,
+            Map<String, String> namedToObf,
+            Namespace obfNs,
+            Namespace namedNs,
+            Set<String> unresolvedCollector) {
 
         MappingTree.Builder b = MappingTree.builder(obfNs, namedNs);
         for (RawClass rc : raw) {
@@ -238,11 +274,11 @@ public final class ProguardReader {
                 return Result.err(new MappingError.DuplicateEntry(rc.obfInternal, obfNs.name()));
             }
             for (RawMember f : rc.fields) {
-                String obfDesc = remapDescriptor(f.namedDesc, namedToObf);
+                String obfDesc = remapDescriptor(f.namedDesc, namedToObf, unresolvedCollector);
                 cb.addField(obfDesc, f.obfName, f.namedName);
             }
             for (RawMember m : rc.methods) {
-                String obfDesc = remapDescriptor(m.namedDesc, namedToObf);
+                String obfDesc = remapDescriptor(m.namedDesc, namedToObf, unresolvedCollector);
                 cb.addMethod(obfDesc, m.obfName, m.namedName);
             }
             cb.done();
@@ -251,7 +287,8 @@ public final class ProguardReader {
     }
 
     /** Замена namedClass → obfClass внутри JVM-дескриптора. */
-    private static String remapDescriptor(String desc, Map<String, String> namedToObf) {
+    private static String remapDescriptor(
+            String desc, Map<String, String> namedToObf, Set<String> unresolvedCollector) {
         StringBuilder out = new StringBuilder(desc.length() + 4);
         int i = 0, n = desc.length();
         while (i < n) {
@@ -264,7 +301,14 @@ public final class ProguardReader {
                 }
                 String cls = desc.substring(i + 1, end);
                 String obf = namedToObf.get(cls);
-                out.append('L').append(obf != null ? obf : cls).append(';');
+                if (obf == null) {
+                    if (unresolvedCollector != null) {
+                        unresolvedCollector.add(cls);
+                    }
+                    out.append('L').append(cls).append(';');
+                } else {
+                    out.append('L').append(obf).append(';');
+                }
                 i = end + 1;
             } else {
                 out.append(c);

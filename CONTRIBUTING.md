@@ -12,7 +12,7 @@
 
 1. Откройте issue для обсуждения нетривиальных изменений (API, поведение, производительность). Для мелких багфиксов достаточно PR.
 2. Форкните репозиторий и создайте ветку `feat/<area>-<slug>` или `fix/<area>-<slug>`.
-3. Перед коммитом убедитесь, что `./gradlew build` и `./gradlew check` проходят.
+3. Перед коммитом убедитесь, что проходят команды, как в CI: `./gradlew verifyPlatformProfiles build vidaDocTest` (при смене примеров кода в `docs/` — обязателен `vidaDocTest`). При полной проверке локально: `./gradlew javadocAll` (агрегированный Javadoc в `build/javadoc-all/`).
 4. Оформите PR (используется [шаблон](./.github/PULL_REQUEST_TEMPLATE.md)) и пройдите CI.
 
 ## Conventional Commits
@@ -63,12 +63,17 @@ docs(installer): примеры CLI для ATLauncher
 
 ## Документация
 
+Полный перечень страниц — в [`docs/index.md`](./docs/index.md) (каталог по разделам). Краткие сводки: [`docs/reference/index.md`](./docs/reference/index.md), [`docs/guides/index.md`](./docs/guides/index.md).
+
 Если вы меняете публичное поведение, **обновите `docs/`**:
 
-- Добавили API — страница в `docs/modules/<module>.md` + возможно в `docs/guides/`.
+- Добавили API — страница в `docs/modules/<module>.md` + при необходимости `docs/guides/`.
 - Изменили CLI-флаг — обновите [`docs/reference/cli-installer.md`](./docs/reference/cli-installer.md).
+- Добавили поле манифеста — [`docs/reference/manifest-schema.md`](./docs/reference/manifest-schema.md).
 - Добавили термин — впишите в [`docs/glossary.md`](./docs/glossary.md).
-- Breaking change — обязательно `CHANGELOG.md`-entry и упоминание в описании PR.
+- Breaking change — запись в `CHANGELOG.md` и упоминание в описании PR.
+
+Примеры Java в markdown: при полном пакете `package dev.vida....` они участвуют в **`./gradlew vidaDocTest`**. После правок доков с кодом запускайте эту задачу локально.
 
 Javadoc на публичных API обязателен; для `@Internal` — желателен, но не блокирует PR.
 

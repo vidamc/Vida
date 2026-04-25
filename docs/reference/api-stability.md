@@ -27,6 +27,12 @@ API, который мы обкатываем. Правила:
 
 `<name>` — тег feature-set'а: `base`, `vifada`, `loader`, `susurro`, etc. Это позволяет нам «стабилизировать» части API независимо. Например, `@Preview("base")` может стать `@Stable` до того, как `@Preview("vifada")`.
 
+### Профили платформы {#platform-profiles-stability}
+
+Файлы `platform-profiles/**/profile.json`, типы `PlatformProfileDescriptor`, выбор профиля в агенте и поля `custom.vida.platformProfileIds` в манифесте — **не** часть стабильного контракта мода Modrinth/CurseForge-уровня. Мы можем расширять схему профиля и правила валидации в минорных версиях Vida.
+
+Стабильными остаются: формат `vida.mod.json` (обязательные группы полей), SemVer зависимостей и способ **указать** версию игры / профиль через JVM и Gradle (см. [modules/platform-profiles.md](../modules/platform-profiles.md)).
+
 ### `@ApiStatus.Internal`
 
 Не используйте вне загрузчика. Правила:
@@ -38,39 +44,43 @@ API, который мы обкатываем. Правила:
 
 - Пакеты `dev.vida.*.internal` — полностью `@Internal`; аннотация на `package-info.java`.
 - `dev.vida.core.*` — `@Stable`; точечные исключения помечены на классе.
-- `dev.vida.vifada.*`, `dev.vida.loader.*`, `dev.vida.base.*` — `@Preview("<name>")` до 1.0.0.
-- `dev.vida.bloque.*`, `dev.vida.objeto.*`, `dev.vida.susurro.*`, `dev.vida.puertas.*` — `@Preview("<name>")` с 0.3.0, стабилизируются по мере обкатки (см. [roadmap](../roadmap.md), [session-roadmap](../session-roadmap.md)).
-- `dev.vida.entidad.*`, `dev.vida.mundo.*` — `@Preview("entidad")` / `@Preview("mundo")` с 0.5.0; стабилизация пойдёт после появления первых продакшн-модов и world bridge'ей.
-- `dev.vida.render.*`, `dev.vida.red.*` — `@Preview("render")` / `@Preview("red")` с 0.6.0.
-- `@VifadaMulti` / `@VifadaLocal` — отдельный preview-тег `@Preview("vifada-next")` для будущей ветки расширений Vifada.
+- `dev.vida.loader.*` — **смешанный контракт**: публичная поверхность бутстрапа (`VidaBoot`, `BootOptions`, `BootReport`, `VidaRuntime`, `VidaEnvironment`, `LoaderError`) помечена **`@Stable`**; агент, трансформер, иерархия лоадеров и профили платформы остаются **`@Preview("loader")`** до полной заморозки байткод-политики.
+- `dev.vida.base.*`, `dev.vida.bloque.*`, `dev.vida.objeto.*`, `dev.vida.susurro.*`, `dev.vida.puertas.*`, публичный API `dev.vida.gradle.*` — **`@Stable` с 1.0.0** (контракт SemVer между `1.x`, см. `CHANGELOG`).
+- `dev.vida.entidad.*`, `dev.vida.mundo.*`, `dev.vida.render.*`, `dev.vida.fuente.*`, `dev.vida.vifada.*` — **`@Stable` с 2.0 «Масштаб»** (публичные пакеты без `Preview`; см. [migration/2.0.0.md](../migration/2.0.0.md)).
+- Основные типы **`dev.vida.vigia.*`** (`VigiaSesion`, `Resumen`, `VigiaReporte`, …) — **`@Stable`**.
+- `dev.vida.red.*` — **`@Stable`** (Tejido).
+- `dev.vida.escultores.*` — **`@Stable`** (`Escultor`, `BrandingEscultor`; см. [modules/escultores.md](../modules/escultores.md)).
+- Аннотации **Vifada 2** — `@VifadaMulti`, `@VifadaLocal`, `@VifadaRedirect` входят в стабильный контракт `dev.vida.vifada` (без отдельного тега `vifada-next`).
 - Записи `record` и `sealed`-иерархии — первоклассные члены стабильного API; изменение компонентов `record` или набора пермитов `sealed` — breaking.
 
-### Preview-модули 0.3.0 — явный reminder
+### Стабилизация 1.0.0
 
-| Модуль | Preview-тег | Что стабилизируем к 1.0 |
-|--------|-------------|--------------------------|
-| `bloque` | `@Preview("bloque")` | `Bloque`, `PropiedadesBloque`, `FormaColision`, `RegistroBloques` — после двух минорных релизов с несколькими продакшн-модами. |
-| `objeto` | `@Preview("objeto")` | `Objeto`, `PropiedadesObjeto`, `MapaComponentes` и набор стандартных `Componente` — вместе с `bloque`. |
-| `susurro` | `@Preview("susurro")` | `Susurro`, `Tarea`, `Prioridad`, `Etiqueta`, `HiloPrincipal` — после 0.5.0 (когда `HiloPrincipal` получит полноценную реализацию в клиенте/сервере MC). |
-| `puertas` | `@Preview("puertas")` | Формат `.ptr` v1, `Accion`, `Objetivo`, `Namespace`, `PuertaError` — формат файла стабилизируется раньше API (сам формат — первый кандидат на `@Stable`). |
-| `base.latidos` (`Ejecutor`) | `@Preview("base")` | `Ejecutor` + фабрики (`hiloPrincipal`, `susurro`, `serializado`) стабилизируются вместе с `susurro`. |
+| Модуль | Статус с 1.0.0 | Комментарий |
+|--------|-----------------|-------------|
+| `base`, `bloque`, `objeto`, `susurro`, `puertas`, **`red`** (Tejido), **`escultores`** | `@Stable` | Обещание SemVer для публичных типов; см. [migration/1.0.0.md](../migration/1.0.0.md). |
+| Gradle plugin `dev.vida.gradle`, `dev.vida.gradle.tasks` | `@Stable` | Внутренности `dev.vida.gradle.internal` — `@Internal`. |
 
-### Preview-модули 0.5.0
+### Стабилизация 2.0 «Масштаб»
 
-| Модуль | Preview-тег | Что стабилизируем к 1.0 |
-|--------|-------------|--------------------------|
-| `entidad` | `@Preview("entidad")` | `Entidad`, `TipoEntidad`, `PropiedadesEntidad`, entity data-components и `RegistroEntidades` — после реальных модов, которые докажут shape API. |
-| `mundo` | `@Preview("mundo")` | `Mundo`, `Coordenada`, `Dimension`, `Bioma`, `LatidosMundo` и `@OyenteDeTick` — после того как runtime bridge и world events пройдут хотя бы один игровой цикл без breaking-дыр. |
+| Модуль / область | Статус | Комментарий |
+|------------------|--------|-------------|
+| `entidad`, `mundo`, `render`, `fuente`, `vifada` | `@Stable` | См. [roadmap/2.0-plan.md](../roadmap/2.0-plan.md), [migration/2.0.0.md](../migration/2.0.0.md). |
+| `vigia` (основной публичный API) | `@Stable` | Форматы отчётов согласованы с тестами; при изменении HTML/JFR — запись в `CHANGELOG.md`. |
+| `loader` | См. выше: **Stable** boot API + **Preview** internals | GA по загрузчику = снятие превью с оставшихся публичных типов (`VidaPremain`, `MorphIndex`, …) после заморозки agent/bytecode. |
+| `installer` | **`InstallerCore` — `@Stable`**; CLI/GUI и отдельные handlers могут оставаться в превью до стабилизации лаунчер-каталога. |
 
-### Preview-модули 0.6.0
+Примеры кода в `docs/`, оформленные как полные compilation unit с `package dev.vida....`, дополнительно проверяются задачей `./gradlew vidaDocTest` (компиляция извлечённых файлов).
 
-| Модуль/фича | Preview-тег | Что стабилизируем к 1.0 |
-|-------------|-------------|--------------------------|
-| `render` | `@Preview("render")` | `ModeloBloque`, `ModeloEntidad`, `TextureAtlas`, `RenderPipeline`, shader-hooks. |
-| `red` | `@Preview("red")` | `PaqueteCliente/Servidor`, `TejidoCanal`, `CodecPaquete`, auto-serialización record и versioning-политика. |
-| Vifada extensions | `@Preview("vifada-next")` | `@VifadaMulti`, `@VifadaLocal` и их runtime-реализация в transformer'е. |
+### Оставшиеся Preview-области
 
-Правило: любой breaking change в preview-модуле обязан быть отмечен в `CHANGELOG.md` с указанием тега (`[preview/susurro]`, `[preview/puertas]` и т.д.) и, где возможно, сопровождаться migration note.
+| Область | Preview-тег | Критерии перехода в `@Stable` |
+|---------|---------------|-------------------------------|
+| `loader` (internals) | `@Preview("loader")` | `VidaPremain`, `VidaClassTransformer`, `JuegoLoader`, `ModLoader`, `MorphIndex`, типы `profile.*` — до заморозки agent + bytecode на целевой MC; строгие IT; `vidaDocTest` зелёный. |
+| `installer` (кроме ядра) | `@Preview("installer")` | Handlers лаунчеров и толстый CLI — без ломки в двух минорах; сценарии Mojang/Prism на целевых ОС ([modules/installer.md](../modules/installer.md)). |
+
+Исторические таблицы preview для 0.5.x / 0.6.x заменены выпуском **2.0**: `entidad`, `mundo`, `render`, `fuente`, `vifada` (включая Vifada 2), ключевые типы `vigia` переведены на `@Stable`.
+
+Правило: любой breaking change в оставшихся `@Preview`-типах обязан быть отмечен в `CHANGELOG.md` с указанием тега и, где возможно, migration note.
 
 ## Semantic Versioning
 

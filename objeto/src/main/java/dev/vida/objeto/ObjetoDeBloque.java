@@ -15,7 +15,7 @@ import java.util.Objects;
  * vanilla-соглашению. Если модератор хочет иной id, он может использовать
  * {@link #conId(Bloque, dev.vida.core.Identifier, PropiedadesObjeto)}.
  */
-@ApiStatus.Preview("objeto")
+@ApiStatus.Stable
 public final class ObjetoDeBloque extends Objeto {
 
     private final Bloque bloque;

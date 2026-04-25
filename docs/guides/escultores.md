@@ -1,133 +1,147 @@
 # Escultores — низкоуровневые трансформеры
 
-Когда `@VifadaMorph` недостаточно — например, нужно модифицировать класс без статического описания в morph-классе, или работать с константным пулом напрямую — в дело идут `Escultor`'ы.
 
-Это внутренний API Vida, и пока что не рекомендован для мод-авторов: он преимущественно `@ApiStatus.Internal`. Страница — для мод-инженеров и контрибьюторов.
+
+Когда `@VifadaMorph` недостаточно — например, нужно модифицировать класс без статического описания в morph-классе, или работать с байткодом напрямую — используются **`Escultor`**'ы.
+
+
+
+Публичный интерфейс **`dev.vida.escultores.Escultor`** помечен **`@ApiStatus.Stable`**. Для большинства модов по-прежнему достаточно Vifada; Escultor — осознанный «спуск ниже».
+
+
 
 ## Концепция
 
-`Escultor` — это функция `byte[] → byte[]`:
+
+
+`Escultor` — функция `byte[] → byte[]` с дешёвым предикатом:
+
+
 
 ```java
+
 public interface Escultor {
-    String name();
-    boolean mightMatch(String className, byte[] classFile);
-    byte[] tryPatch(String className, byte[] classFile);
+
+    String nombre();
+
+    boolean mightMatch(String nombreClaseInternal, byte[] archivoClase);
+
+    byte[] tryPatch(String nombreClaseInternal, byte[] archivoClase);
+
 }
+
 ```
 
-- `name()` — диагностическое имя.
-- `mightMatch(...)` — **дешёвый** pre-check. Если `false`, `tryPatch` не вызывается.
-- `tryPatch(...)` — настоящая работа. Возвращает `null`, если решил не менять.
 
-Ключевой принцип: **`mightMatch` должен быть O(1) или O(размер класса)** — он вызывается на _каждом_ классе игры. `tryPatch` — O(что нужно), но только после положительного `mightMatch`.
+
+- **`nombre()`** — диагностическое имя для логов.
+
+- **`mightMatch(...)`** — **дешёвый** pre-check. Если `false`, `tryPatch` не вызывается.
+
+- **`tryPatch(...)`** — настоящая работа. Возвращает `null`, если класс не изменён.
+
+
+
+Принцип: **`mightMatch` должен быть O(1) или O(размер класса)** — он вызывается на каждом загружаемом классе игры. `tryPatch` — дороже, но только после положительного `mightMatch`.
+
+
+
+## Регистрация через `vida.mod.json`
+
+
+
+Классы Escultor перечисляются в поле **`escultores`** манифеста (строки FQCN и/или объекты с **`priority`**). Загрузчик создаёт экземпляры через `ModLoader` в **`BootSequence`** и подключает их в **`VidaClassTransformer`** после встроенного **`BrandingEscultor`**. Подробности — [reference/manifest-schema.md](../reference/manifest-schema.md#escultores--optional-array), [modules/escultores.md](../modules/escultores.md).
+
+
+
+Отдельного программного `registerEscultor` в публичном API нет: контракт — декларативный список в манифесте.
+
+
 
 ## Пример: `BrandingEscultor`
 
-Патчит format-строку F3-дебаг-экрана.
 
-### Pre-check — byte-scan
 
-```java
-private static final byte[] NEEDLE = "Minecraft %s (%s/%s%s)".getBytes(UTF_8);
+Реализация в репозитории — **`dev.vida.escultores.BrandingEscultor`** (`INSTANCE`): byte-scan по сырому `.class`, затем ASM только при совпадении маркера; замена строки формата F3 на вариант с `(vida)`. Используйте её как эталон паттерна «дешёвый pre-check, дорогая обработка», без копирования устаревших примеров из старых версий документации.
 
-@Override
-public boolean mightMatch(String name, byte[] bytes) {
-    // ищем ASCII-подстроку в сыром .class файле
-    return indexOf(bytes, NEEDLE) >= 0;
-}
-```
 
-`indexOf` — наивный O(n·m), но `m` маленькое и `n` — размер одного класса. На 99% классов `mightMatch` отвечает `false` за считанные микросекунды.
-
-### Patch — ASM
-
-```java
-@Override
-public byte[] tryPatch(String name, byte[] bytes) {
-    ClassReader cr = new ClassReader(bytes);
-    ClassNode cn = new ClassNode();
-    cr.accept(cn, 0);  // 0, не SKIP_FRAMES — иначе невалидный byte-code на выходе
-
-    boolean changed = false;
-    for (MethodNode mn : cn.methods) {
-        for (AbstractInsnNode insn : mn.instructions) {
-            if (insn instanceof LdcInsnNode ldc && "Minecraft %s (%s/%s%s)".equals(ldc.cst)) {
-                ldc.cst = "Minecraft %1$s (vida)";
-                changed = true;
-            }
-        }
-    }
-
-    if (!changed) return null;
-
-    ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-    cn.accept(cw);
-    return cw.toByteArray();
-}
-```
-
-### Регистрация
-
-Эскульторы встраиваются в `VidaClassTransformer` после `MorphIndex`:
-
-```java
-transformer.registerEscultor(new BrandingEscultor());
-```
-
-В 0.x API регистрации ещё не публичный. Эскультор-хуки в `vida.mod.json` — запланированы.
 
 ## Когда писать свой `Escultor`
 
-- Вам нужно модифицировать класс, имя которого вычисляется (например, переименованный при обфускации).
-- Нужна патчинг-логика, которая сама решает применяться ли (`Vifada` требует статический `@VifadaMorph`).
-- Нужна работа с constant pool, bootstrap-методами, атрибутами класса.
 
-Для 99% мод-задач `Vifada` достаточно. `Escultor` — это «спуститься ниже», и делать это стоит осознанно.
+
+- Имя цели заранее неизвестно или меняется между версиями игры.
+
+- Нужна логика «применить только если…», которую не выразить через `@VifadaMorph`.
+
+- Нужна работа с постоянным пулом / атрибутами класса без генерации морф-класса.
+
+
+
+Для большинства задач достаточно **[Vifada](./vifada.md)**.
+
+
 
 ## Правила хорошего тона
 
+
+
 ### 1. Делайте `mightMatch` _очень_ быстрым
 
-Любой `byte[]`-scan не быстрее, чем `indexOf` по константной needle. Если вы делаете ASM-парсинг в `mightMatch` — вы делаете что-то не так.
 
-### 2. Никогда не бросайте из `tryPatch` исключения
 
-Возвращайте `null` при любом неожиданном состоянии. Исключения транзитивно приведут к провалу загрузки класса игры, что игрок не сможет диагностировать.
+Любой полный ASM-parse в `mightMatch` — признак ошибки дизайна.
 
-### 3. Логируйте применения
 
-```java
-log.info("BrandingEscultor: patched {}", name);
-```
 
-Это бесценно в issue-репортах от пользователей.
+### 2. Никогда не бросайте из `tryPatch` проверяемые исключения наружу
 
-### 4. Тестируйте на loadability
 
-Минимальный unit-тест:
 
-```java
-@Test
-void patchedClassLoadsAndVerifies() {
-    byte[] original = Files.readAllBytes(Path.of("src/test/resources/DebugScreenOverlay.class"));
-    byte[] patched = new BrandingEscultor().tryPatch("net/minecraft/.../DebugScreenOverlay", original);
+Возвращайте `null` при неожиданном состоянии. Исключения на hot-path загрузки класса превращаются в аварию JVM.
 
-    // загружаем в in-memory ClassLoader
-    TestClassLoader loader = new TestClassLoader();
-    loader.define("net.minecraft....DebugScreenOverlay", patched);
-    // никаких исключений — значит bytecode валидный
-}
-```
 
-## Будущее
 
-- Публичный API для мод-авторов (preview-статус).
-- `@Escultor(priority = ...)` — декларативная регистрация.
-- Кэш результатов `tryPatch` по хэшу входа — чтобы не патчить повторно одни и те же классы между запусками.
+### 3. Логируйте успешные патчи на INFO
+
+
+
+Это упрощает диагностику пользовательских логов.
+
+
+
+### 4. Тестируйте loadability
+
+
+
+Минимальный тест — прогон `tryPatch` на эталонном `.class` и загрузка результата в изолированном `ClassLoader` (см. тесты `:escultores` / `:loader`).
+
+
+
+## Порядок с Puertas и Vifada
+
+
+
+1. **Puertas** (`.ptr`) расширяют видимость — должны быть применены до логики, которая генерирует обращения к расширенным символам.
+
+2. **Vifada** изменяет методы по морф-классам.
+
+3. **Escultor** — точечный патч «сырых» байтов, если предыдущие слои не подходят.
+
+
+
+В Gradle: `vidaValidatePuertas` → сборка → рантайм-трансформер с тем же порядком внутри агента.
+
+
 
 ## Что читать дальше
 
-- [modules/loader.md](../modules/loader.md#brandingescultor) — пример в коде.
-- [architecture/performance.md](../architecture/performance.md) — почему pre-check важен.
+
+
+- [modules/loader.md](../modules/loader.md#brandingescultor) — где цепочка подключается.
+
+- [architecture/performance.md](../architecture/performance.md) — зачем нужен pre-check.
+
 - [guides/vifada.md](./vifada.md) — высокоуровневая альтернатива.
+
+

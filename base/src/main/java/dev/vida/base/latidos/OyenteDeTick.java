@@ -17,7 +17,7 @@ import java.lang.annotation.Target;
  * частотный throttling по корневому серверному тику: {@code tps=20}
  * означает «каждый тик», {@code tps=1} — примерно раз в секунду.
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface OyenteDeTick {

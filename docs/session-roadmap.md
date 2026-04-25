@@ -35,7 +35,7 @@
 См. `[CHANGELOG.md](../CHANGELOG.md#040--2026-04-22)`. Итоги:
 
 - `vida-vigia`: `VigiaSesion`, `Resumen`, `VigiaReporte` (HTML), `VigiaComando`.
-- Reflection-биндер: `LatidoRegistrador`, `LatidoRegistradorError` (sealed), расширение `@EjecutorLatido`.
+- Биндер аннотаций: `LatidoRegistrador`, `LatidoRegistradorError` (sealed), расширение `@EjecutorLatido` (рантайм по возможности через `MethodHandle`).
 - Modrinth App handler: `ModrinthHandler`, `ModrinthDbReader` (SQLite JDBC).
 - CurseForge handler: `CurseForgeHandler`, `CurseForgeJsonPatcher`, `CurseForgeInstanceScanner`.
 - Документация: `vigia.md`, `base-ejecutor.md`, расширение `installer.md`.
@@ -49,7 +49,7 @@
   - HTML-отчёт (`vigia-report-<ts>.html`) с flame-chart, top-20 методов, breakdown по `Latido`/`Catalogo`/`Susurro`.
   - Интеграция с `Susurro.Estadisticas` и `DefaultLatidoBus` (метрики на канал).
   - Тесты: контракты snapshot-формата, smoke-тесты HTML-renderer'а.
-- **Reflection-биндер для `@EjecutorLatido`.**
+- **Биндер `@EjecutorLatido` / `@OyenteDeTick` (`LatidoRegistrador`).**
   - `LatidoRegistrador.registrarEnObjeto(bus, instance)` — сканирует методы, помеченные `@EjecutorLatido`, создаёт правильный `Ejecutor` (SINCRONO / SUSURRO / HILO_PRINCIPAL), подписывает с корректной `Prioridad`/`Fase`.
   - Валидация сигнатуры: ровно один параметр, присваиваемый типу события из `@Latido`-поля владеющего класса.
   - Ошибки — типизированные `LatidoRegistradorError`.
@@ -57,7 +57,7 @@
 - **Modrinth App handler.** Чтение `app.db` (SQLite JDBC) + модификация `profiles.json`; `InstanceRef` отдаётся installer'у.
 - **CurseForge handler.** `minecraftinstance.json` с `javaArgsOverride`; обработка `modpack.manifest`.
 - **Обновление `docs/modules/`**: страницы `vigia.md`, `base-ejecutor.md`, расширение `installer.md`.
-- **CHANGELOG 0.4.0**: два новых модуля, два новых launcher'а, reflection-биндер, docs.
+- **CHANGELOG 0.4.0**: два новых модуля, два новых launcher'а, `LatidoRegistrador`, docs.
 
 Критерии выхода: ≥95% покрытие новых модулей Jacoco, нулевые линты, все installer-ITs зелёные.
 
@@ -89,9 +89,9 @@
 
 - `vida-render`: `ModeloBloque`, `ModeloEntidad`, `TextureAtlas`, `RenderPipeline`, `ShaderHook`, `ContextoShader`; safe fallback (`cube + missing-texture` / `entity/simple + missing-texture`).
 - `vida-red`: `PaqueteCliente`, `PaqueteServidor`, `TramaPaquete`, `TejidoCanal`, `TejidoError`, `CodificadorRegistros`; авто-сериализация record'ов, versioned codecs и back-pressure.
-- Data-driven прототип в `loader`: `FuentePrototipoParser` + модели `FuenteBloque`/`FuenteObjeto`/`FuenteRecetaShaped`; чтение `custom["vida:dataDriven"]` из `vida.mod.json` и datapack JSON.
+- Data-driven прототип в модуле `:fuente` (`dev.vida.fuente`): `FuentePrototipoParser` + модели `FuenteBloque`/`FuenteObjeto`/`FuenteRecetaShaped`; чтение `custom["vida:dataDriven"]` из `vida.mod.json` и datapack JSON (оркестрация в загрузчике).
 - Интеграция bootstrap: parsed data-driven snapshot доступен в `VidaEnvironment.fuenteDataDriven()`.
-- Vifada preview-расширения: `@VifadaMulti`, `@VifadaLocal` под `@ApiStatus.Preview("vifada-next")`.
+- Заявлены расширения `@VifadaMulti`, `@VifadaLocal`; полная реализация **Vifada 2** (+ `@VifadaRedirect`, конфликты) — в **Session 10 / 2.0**, см. [roadmap.md](roadmap.md#20--масштаб).
 - Документация: новые страницы `docs/modules/render.md`, `docs/modules/red.md`, обновления индексов, `vifada.md`, `manifest-schema.md`, `roadmap.md`, этот файл.
 
 Оригинальный план
@@ -99,11 +99,13 @@
 - `**vida-render`.** Pipeline-абстракция для custom-блоков и entities: `ModeloBloque`, `ModeloEntidad`, TextureAtlas, Shader-hooks; безопасно по-умолчанию (если модель не указана — cube + missing-texture).
 - `**vida-red`.** `PaqueteCliente` / `PaqueteServidor` — авто-сериализация record'ов, версионирование кодеков, back-pressure.
 - **Data-driven моды (прототип).** Чтение блока/предмета/рецепта из `vida.mod.json` + датапака без Java. MVP-объём: простые блоки, простые предметы, shaped-recipes.
-- **Vifada расширения (превью)** — `@VifadaMulti`, `@VifadaLocal` доступны под `@ApiStatus.Preview("vifada-next")`.
+- **Vifada расширения** — заявлены `@VifadaMulti`, `@VifadaLocal`; финальный контракт **Vifada 2** закреплён в линии 2.0 (`@Stable` для пакета `dev.vida.vifada`).
 
 ---
 
 ## Session 5 — 0.7.0 «Первые моды (лёгкие два)» [DONE]
+
+*Ниже — целевой сценарий и типы; каталоги `mods/saciedad` и `mods/senda` в репозитории **опциональны** (подключаются в `settings.gradle.kts` только если папки есть). В минимальном клоне веток этих подпроектов может не быть.*
 
 См. `[CHANGELOG.md](../CHANGELOG.md#070--2026-04-22)`. Итоги:
 
@@ -169,89 +171,74 @@
 
 **Задача:** Vifada-морфы в **ядре** загрузчика (не в пользовательских модах) инжектятся в ключевые MC-методы и публикуют системные события на глобальную `LatidoBus`:
 
-- `LatidoPulso` — каждый game-tick (`Minecraft.tick()` / `ClientTickEvents`);
+- `LatidoPulso` — каждый **клиентский** тик (`Minecraft.tick()`);
 - `LatidoRenderHud` — каждый render-frame HUD (`Gui.render(GuiGraphics, float)`).
 
 После этого любой мод, подписавшийся на `LatidoRenderHud`, начинает получать события без собственных MC-морфов.
 
 ### Инфраструктура
 
-- `core/src/main/java/dev/vida/platform/` — новый пакет с `PlatformBridge` (интерфейс) и `VanillaBridge` (реализация через Vifada).
+- `loader/src/main/java/dev/vida/platform/` — `PlatformBridge` (интерфейс) и `VanillaBridge` (мост; вызовы vanilla через закэшированные `MethodHandle`).
 - Морфы-системы: `MinecraftTickMorph`, `GuiRenderMorph` — включены в agent-fat-jar.
 - Тесты: `BootSequenceIntegrationTest` — поднимает фейковый `Instrumentation`, проверяет, что `LatidoPulso` приходит ровно N раз за N тиков.
 
 ---
 
-## Session 7 — 0.9.0 «Valenta» (Sodium-class мод) [DONE]
+## Session 7 — 0.9.0 «Клиентский рендер Sodium-класса» [DONE]
 
-См. `[CHANGELOG.md](../CHANGELOG.md#090--2026-04-22)`. Итоги:
+См. `[CHANGELOG.md](../CHANGELOG.md#090--2026-04-22)`. Итоги (концепция и план, без отдельного мода в дереве репозитория):
 
-- `mods/valenta/` — полноценный аналог Sodium + Sodium Extra в одном моде.
-- Render core: `CompactVertexFormat` (16 bytes), `VboMallaBatcher` с `glMultiDrawElementsIndirect`, `BiomeBlendSsbo`, `BlockLightSsbo`, `GpuBuffer`, `GlFunctions`.
-- Chunk meshing: `ChunkTaskGraph` через `Susurro` (`Analisis → Build → Upload`), `Etiqueta.de("valenta/chunk")`, greedy face culling.
-- Culling: `ValentaFrustum` (Gribb-Hartmann), `OcclusionQuery` (GL `SAMPLES_PASSED`), `PvsTree` (portal flood-fill), `CullingEngine` (three-tier gate).
-- Sky: `SkyRenderer` с `glInvalidateFramebuffer`.
-- QoL: `ParticleFilter`, `CloudRenderer`, `AnimatedTextureManager`, `RenderDistanceManager`, `GpuTimingPane`.
-- 5 Vifada morphs (`escultor/`): `LevelRendererMorph`, `GameRendererMorph`, `ChunkRendererMorph`, `ParticleMorph`, `CloudMorph`.
-- Debug: `/valenta debug occlusion|gpu|stats`, `OcclusionOverlay`.
-- Тесты: 11 unit-тестов + jqwik property-based `MallaChunkPropertyTest`.
-- JMH бенчмарки: `VertexFormatBenchmark`, `CullingBenchmark`, `MeshingBenchmark`.
-- Документация: `README.md`, `CHANGELOG.md`, `docs/mods/valenta/architecture.md`, `docs/mods/valenta/compat-matrix.md`.
+- Цель релиза: полноценный аналог Sodium + Sodium Extra в **одном** опциональном клиентском моде (рендер-ядро + QoL).
+- Render core: компактный vertex-format, mega-VBO + `glMultiDrawElementsIndirect`, SSBO для biome-blend и block-light, абстракция `GlFunctions` (в т.ч. noop для headless).
+- Chunk meshing: `ChunkTaskGraph` через `Susurro` (`Analisis → Build → Upload`), метки `Etiqueta` для back-pressure на chunk-задачах, greedy face culling.
+- Culling: frustum (Gribb-Hartmann), `OcclusionQuery` (GL `SAMPLES_PASSED`), `PvsTree` (portal flood-fill), `CullingEngine` (трёхуровневый gate).
+- Sky: инвалидация framebuffer вместо лишних clear, когда небо перекрыто геометрией.
+- QoL: частицы/тучи/анимации текстур, плавный render distance, отладочный HUD с GPU-таймингами.
+- Vifada-морфы в `net/minecraft/client/renderer/...` в отдельном пакете `*.escultor`; конфликты с другими render-модами сообщает `VidaClassTransformer`.
 
 Оригинальный план
 
-Полноценный аналог Sodium + Sodium Extra в **одном** моде `valenta`.
+Один опциональный мод с собственным жизненным циклом, конфигом и морфами.
 
 ### Функциональность
 
-- **Render-ядро.** VBO-батчер + `glMultiDrawIndirect`; compact vertex-format (16 байт вместо 28); отдельные SSBO для biome-blending и block-light.
-- **Chunk meshing.** Task-graph через `Susurro`: `Analisis → Build → Upload`. Задачи помечены `Etiqueta.de("valenta/chunk")` для back-pressure.
-- **Culling.** Occlusion queries + frustum; PVS-дерево; `/valenta debug occlusion` для визуализации.
+- **Render-ядро.** VBO-батчер + `glMultiDrawIndirect`; compact vertex-format; отдельные SSBO для biome-blending и block-light.
+- **Chunk meshing.** Task-graph через `Susurro`: `Analisis → Build → Upload`. Задачи помечены `Etiqueta` для back-pressure.
+- **Culling.** Occlusion queries + frustum; PVS-дерево; отладочная визуализация occlusion.
 - **Видимость неба.** `glInvalidateFramebuffer` вместо clear, когда небо перекрыто.
 - **Qualities-of-life (Sodium Extra).**
   - Скрытие/замена частиц, туч, анимированных текстур.
   - Render distance < 8 без фриза воркеров.
-  - F3 custom-пейн `/valenta debug` с таймингами GPU-пассов.
-- **Совместимость.** Vifada-морфы в `net/minecraft/client/renderer/...` группируются в `valenta.escultor`; конфликты с другими render-модами сообщает `VidaClassTransformer`.
+  - F3 custom-пейн с таймингами GPU-пассов.
+- **Совместимость.** Морфы группируются в отдельном escultor-пакете; конфликты с другими render-модами сообщает `VidaClassTransformer`.
 
 ### Инфраструктура
 
-- `mods/valenta/` — `build.gradle.kts` через `dev.vida.mod`.
-- `.ptr`-файл на ~30 нужных vanilla-символов.
-- Тесты: render-логика — unit (с offscreen-GL через LWJGL headless); целочисленные инварианты meshing'а — property-based (jqwik).
-- Бенчмарк-сьют: `@Benchmark` JMH, сравнение vanilla vs Valenta на 10 воркспейсах.
-- Документация: `mods/valenta/README.md` + `docs/mods/valenta/architecture.md`.
+- Сборка через `dev.vida.mod`, `.ptr` на нужные vanilla-символы.
+- Тесты: render-логика — unit (offscreen-GL через LWJGL headless); инварианты meshing'а — property-based (jqwik).
+- Бенчмарк-сьют: `@Benchmark` JMH, сравнение vanilla vs целевой реализации на фиксированных воркспейсах.
+- Документация: `CHANGELOG.md` и этот раздел roadmap.
 
 ---
 
-## Session 8 — 0.9.5 «Vida Shaders» + «Estorosso»
+## Session 8 — 0.9.5 [DONE]
 
-Аналог Iris Shaders. Вызов не в том, чтобы повторить байт-в-байт, а сделать корректную работающую реализацию `.shaders.zip` и написать простой shader-pack `Estorosso` (итал. «огненная тень»), добавляющий реалистичные тени.
-
-### `Vida Shaders` (мод)
-
-- Разбор `.shaders.zip` по конвенции OptiFine/Iris (`shaders/*.vsh|*.fsh|*.glsl`).
-- `ShaderProgramaManejador` — компиляция, линковка, горячая перезагрузка при сохранении файла.
-- Hook'и в vanilla render-pipeline через Vifada:
-  - gbuffers (terrain/entities/water/sky/translucent).
-  - composite passes.
-  - final pass.
-- Uniforms стандарта Iris: `gbufferModelView`, `sunPosition`, `viewHeight`, `rainStrength`, и т. д. Полный совместимый список — в `docs/mods/vida-shaders/uniforms.md`.
-- `vshconfig.txt` — GUI редактор.
-- Тесты: parser-contracts, compile-smoke против тестового шейдер-пака (`Estorosso` используется в CI).
-
-### `Estorosso` (shader-pack)
-
-- Простые, но корректные тени: shadow-map 2k с PCF 3×3; cascades — 2 уровня.
-- Мягкая корона вокруг солнца и луны.
-- Rain-wet-ness: увеличение specular на нормалях вверх при rainStrength > 0.
-- Без атмосферного рассеяния, без volumetric-fog — чтобы оставаться «простым».
-- В `mods/estorosso/shaders/`; пакуется в `.shaders.zip`.
-- Документация: `mods/estorosso/README.md` + скриншоты.
+См. `[CHANGELOG.md](../CHANGELOG.md#095--2026-04-22)`. Промежуточная пометка между 0.9.0 и 1.0.0; отдельного сюжета публичных JAR в этой сессии не фиксировалось.
 
 ---
 
-## Session 9 — 1.0.0 «Стабилизация»
+## Session 9 — 1.0.0 «Стабилизация» [DONE]
+
+См. `[CHANGELOG.md](../CHANGELOG.md#100--2026-04-22)`. Итоги:
+
+- `@Preview` → `@Stable`: `:base`, `:bloque`, `:objeto`, `:susurro`, `:puertas`; `:gradle-plugin` (`@Stable` на публичных пакетах, `@Internal` на internal).
+- `**./gradlew vidaDocTest`** — генерация из fenced ````java` в `docs/` только для самодостаточных CU с `package dev.vida....`; модуль `:vida-doc-test`, конвенция `vida.doc-test`.
+- **Security audit** — публикуется в `[docs/security/audit-1.0.md](security/audit-1.0.md)`.
+- **JDK matrix** — CI job `jdk-matrix`: Temurin 21 / 22 / 23 / 25, лог `java -version`.
+- **Signed release + SBOM** — без изменения Sigstore; добавлен CycloneDX JSON (**Syft** на `dist/` в `release.yml`).
+- **Миграция 1.0** — `[docs/migration/1.0.0.md](migration/1.0.0.md)`; SemVer и критерии Preview — `[docs/reference/api-stability.md](reference/api-stability.md)`.
+
+Оригинальный план
 
 - Прогон всех `@Preview` → `@Stable` по зрелым модулям (`base`, `bloque`, `objeto`, `susurro`, `puertas`, `gradle-plugin`). Модули, не готовые к `@Stable`, остаются `@Preview`, но с чётким критерием выхода.
 - `**vidaDocTest`** — кастомная Gradle-таска компилирует все  ``java примеры из `docs/` как self-contained `Test`-классы.
@@ -262,22 +249,30 @@
 
 ---
 
+## Session 10 — 2.0 «Масштаб» [DONE]
+
+Сводка целей roadmap §2.0 — см. [roadmap/2.0-plan.md](roadmap/2.0-plan.md), [CHANGELOG.md](../CHANGELOG.md), [migration/2.0.0.md](migration/2.0.0.md):
+
+- **Vifada 2**, расширенный **Fuente** (loot tables), **dev hot-reload**, **телеметрия opt-in**, **installer** (offline-кэш, HTTP resume), регрессия **300+ модов**, стабилизация API (`api-stability.md`), **`vidaDocTest`** в CI.
+
+---
+
 ## Что важно помнить между сессиями
 
 1. **Кэш Gradle** — `./gradlew --stop` между прогонами, чтобы избежать «почему-то кэшируется старый манифест».
-2. **Не ломать API 0.3.0.** Каждая сессия начинается с запуска `./gradlew test` всего репозитория; если что-то упало — чиним до начала новой работы.
+2. **Не ломать `@Stable` контракт.** Каждая сессия начинается с `./gradlew verifyPlatformProfiles build vidaDocTest` (или эквивалента); если что-то упало — чиним до начала новой работы.
 3. **Спанглиш-именование** — придерживаемся стиля Vida: `Bloque`, `Latido`, `Susurro`, `Puerta`, `Cartografía`. Новые публичные типы — ревью на соответствие глоссарию `[docs/glossary.md](./glossary.md)`.
 4. `**@ApiStatus`** — каждый новый public-type получает `@Stable` / `@Preview("<модуль>")` / `@Internal`. Без аннотации — ошибка CI.
 5. **Docs-first контракт** — прежде чем писать код новой фичи, описываем её в `docs/` (как она видится пользователю). Код подтягивается под описание.
 
 ## Риски и альтернативы
 
-- **Render-моды (Valenta/Shaders) тяжелее, чем выглядят.** Если session 6–7 не помещаются в отведённое время, разделяем Valenta на «рендер-ядро + qualities-of-life как отдельный mod Valenta-Extra». Это не ухудшает UX, пользователь всё равно устанавливает `valenta` как зависимость `valenta-extra`.
-- **Sodium/Iris используют SPIRV-Cross и патчи OpenGL-драйверов.** Мы не копируем их — пишем по спецификации OpenGL 4.6 core; если драйвер глючит, документируем в `docs/mods/valenta/compat-matrix.md`.
+- **Render-моды и шейдеры тяжелее, чем выглядят.** Если session 6–7 не помещаются в отведённое время, разделяем работу на «рендер-ядро» и «qualities-of-life» как отдельные артефакты с явной зависимостью между ними.
+- **Часть сторонних client-side shader-стэков** опирается на SPIRV-Cross и обходы багов драйверов. Мы не копируем чужой стэк — ориентируемся на OpenGL 4.6 core; при глюках драйвера фиксируем рабочие профили в доке по GPU.
 - **Если Mojang в 1.22 ломает render-pipeline.** Роадмап гибкий — 0.6.x/0.7.x сдвигаются, предыдущие модули остаются стабильными на 1.21.1 LTS.
 
 ## Что НЕ входит в план
 
 - Порт мода-комбайна (Create-подобные механизмы). Не наш слой — это задача мод-авторов, не платформы.
-- Shaders-pack уровня BSL/Complementary. `Estorosso` — намеренно простой, чтобы быть референсом для других авторов.
+- Крупные community shader-pack'и вне плана Vida: платформа их не поставляет и не документирует как встроенные примеры.
 - Перенос Vida на Minecraft Bedrock. См. `[docs/roadmap.md#не-в-планах](./roadmap.md#не-в-планах)`.

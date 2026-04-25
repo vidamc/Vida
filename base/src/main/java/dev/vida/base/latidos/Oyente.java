@@ -21,7 +21,7 @@ import dev.vida.core.ApiStatus;
  * @param <E> тип события
  */
 @FunctionalInterface
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public interface Oyente<E> {
 
     /**

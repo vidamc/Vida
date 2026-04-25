@@ -8,6 +8,8 @@ import static org.assertj.core.api.Assertions.*;
 
 import dev.vida.core.Version;
 import dev.vida.loader.BootOptions;
+import dev.vida.loader.profile.PlatformProfileDescriptor;
+import dev.vida.loader.profile.PlatformProfileLoader;
 import dev.vida.resolver.Provider;
 import java.util.List;
 import java.util.Optional;
@@ -97,6 +99,48 @@ final class SyntheticProvidersTest {
                 .build();
         Optional<Version> v = SyntheticProviders.resolveMinecraftVersion(opts);
         assertThat(v).contains(Version.parse("1.21.1"));
+    }
+
+    @Test
+    void minecraft_resolves_from_active_profile_when_options_empty() {
+        BootOptions opts = BootOptions.builder().skipDiscovery(true).build();
+        String json = """
+                {
+                  "profileId": "legacy-121/1.21.7",
+                  "gameVersion": "1.21.7",
+                  "generation": "LEGACY_121",
+                  "mappings": { "strategy": "GAME_DIR_PROGUARD" },
+                  "morphBundle": [
+                    "dev.vida.platform.MinecraftTickMorph",
+                    "dev.vida.platform.GuiRenderMorph"
+                  ]
+                }
+                """;
+        PlatformProfileDescriptor d = PlatformProfileLoader.parseProfileJson(json);
+        assertThat(SyntheticProviders.resolveMinecraftVersion(opts, Optional.of(d)))
+                .contains(Version.parse("1.21.7"));
+    }
+
+    @Test
+    void build_adds_minecraft_from_profile_when_no_explicit_version() {
+        BootOptions opts = BootOptions.builder().skipDiscovery(true).build();
+        String json = """
+                {
+                  "profileId": "legacy-121/1.21.7",
+                  "gameVersion": "1.21.7",
+                  "generation": "LEGACY_121",
+                  "mappings": { "strategy": "GAME_DIR_PROGUARD" },
+                  "morphBundle": [
+                    "dev.vida.platform.MinecraftTickMorph",
+                    "dev.vida.platform.GuiRenderMorph"
+                  ]
+                }
+                """;
+        PlatformProfileDescriptor d = PlatformProfileLoader.parseProfileJson(json);
+        List<Provider> out = SyntheticProviders.build(opts, Set.of(), Optional.of(d));
+        assertThat(out).extracting(Provider::id).contains("minecraft");
+        Provider mc = out.stream().filter(p -> p.id().equals("minecraft")).findFirst().orElseThrow();
+        assertThat(mc.version()).isEqualTo(Version.parse("1.21.7"));
     }
 
     @Test

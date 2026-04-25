@@ -23,7 +23,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * код (копируем список и выходим из-под блокировки перед доставкой), так
  * что медленный подписчик не блокирует других.
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public final class DefaultLatidoBus implements LatidoBus {
 
     private static final Log LOG = Log.of(DefaultLatidoBus.class);

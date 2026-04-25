@@ -24,7 +24,8 @@ import java.util.Objects;
  *   --dir &lt;path&gt;             launcher data dir
  *   --instance &lt;path&gt;        path to existing instance (ATLauncher etc.)
  *   --instance-name &lt;str&gt;    new instance name (Prism/MultiMC)
- *   --minecraft &lt;ver&gt;        target Minecraft version (default: 1.21.1)
+ *   --minecraft &lt;ver&gt;        target Minecraft version (default: 1.21.1);
+ *                                supported: 1.21.1+, 26.1.0–26.1.2, or 26.1.preview
  *   --loader-version &lt;v&gt;     loader version tag (default: from bundled jar)
  *   --no-launcher-profile    do not patch launcher_profiles.json (Mojang only)
  *   --no-launch-script       do not write standalone vida.bat/vida.sh (Mojang only)
@@ -189,7 +190,8 @@ public final class CliArgs {
                    --dir <path>                 launcher data dir (required unless --launcher=minecraft)
                    --instance <path>            path to existing instance (ATLauncher requires this)
                    --instance-name <str>        new instance name (Prism/MultiMC)
-                   --minecraft <ver>            target Minecraft version (default: 1.21.1)
+                   --minecraft <ver>            target Minecraft version (default: 1.21.1):
+                                                  1.21.1+, 26.1.0–26.1.2, or 26.1.preview
                    --loader-version <v>         loader version tag (default: from bundled jar)
                    --no-launcher-profile        do not patch launcher_profiles.json (Mojang only)
                    --no-launch-script           do not write vida.bat/vida.sh (Mojang only)

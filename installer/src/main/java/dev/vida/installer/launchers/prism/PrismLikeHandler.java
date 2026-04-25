@@ -13,6 +13,7 @@ import dev.vida.installer.launchers.InstanceRef;
 import dev.vida.installer.launchers.LauncherHandler;
 import dev.vida.installer.mc.JsonTree;
 import dev.vida.installer.mc.McArtifacts;
+import dev.vida.installer.mc.VidaInstallerJvm;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -121,12 +122,16 @@ public abstract class PrismLikeHandler implements LauncherHandler {
         // 2) instance.cfg.
         progress.accept("Writing instance.cfg");
         PrismInstanceCfg cfg = new PrismInstanceCfg(displayName);
+        String vidaJvm = VidaInstallerJvm.spaceSeparatedInstallerJvmProps(
+                opt.minecraftVersion(), opt.loaderVersion());
         if (!supportsAgents()) {
             // MultiMC / pre-7.0 Prism: инжектируем через JvmArgs.
-            String jvmArg = "-javaagent:" + layout.loaderJar().toAbsolutePath();
+            String jvmArg = "-javaagent:" + layout.loaderJar().toAbsolutePath() + " " + vidaJvm;
             cfg.withJvmArgs(jvmArg);
             warnings.add("Using JvmArgs-based -javaagent for " + kind().displayName()
                     + " (no +agents support).");
+        } else {
+            cfg.withJvmArgs(vidaJvm);
         }
         if (!opt.dryRun()) {
             InstallerSupport.writeAtomically(layout.instanceCfg(), cfg.render());

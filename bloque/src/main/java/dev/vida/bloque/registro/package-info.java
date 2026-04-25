@@ -10,7 +10,7 @@
  * оборачивает общий {@code CatalogoMutable<Bloque>} и добавляет
  * тип-специфичные помощники (регистрация блока и tagging).
  */
-@ApiStatus.Preview("bloque")
+@ApiStatus.Stable
 package dev.vida.bloque.registro;
 
 import dev.vida.core.ApiStatus;

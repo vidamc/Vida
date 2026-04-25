@@ -5,11 +5,15 @@
 package dev.vida.loader;
 
 import dev.vida.core.ApiStatus;
+import dev.vida.manifest.ModManifest;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Параметры запуска Vida.
@@ -29,10 +33,15 @@ import java.util.Optional;
  *   <li>{@link #minecraftVersion} — явная версия игры для синтетического
  *       провайдера {@code minecraft} (если не задана — резолвер синтетику
  *       не предоставит, и моды с {@code required.minecraft} получат
- *       {@code ResolverError.Missing}).</li>
+ *       {@code ResolverError.Missing});</li>
+ *   <li>{@link #platformProfileId} — идентификатор профиля платформы Vida
+ *       (например {@code legacy-121/1.21.1}); загрузчик читает
+ *       {@code META-INF/vida/platform-profiles/&lt;id&gt;/profile.json};</li>
+ *   <li>{@link #accessDeniedIds} — id модов, запрещённых политикой доступа на этапе
+ *       {@code Resolver.resolve} (см. {@code ResolverOptions#accessDeniedIds}).</li>
  * </ul>
  */
-@ApiStatus.Preview("loader")
+@ApiStatus.Stable
 public final class BootOptions {
 
     private final Path modsDir;
@@ -43,6 +52,8 @@ public final class BootOptions {
     private final boolean skipDiscovery;
     private final String vidaVersion;
     private final String minecraftVersion;
+    private final String platformProfileId;
+    private final Set<String> accessDeniedIds;
 
     private BootOptions(Builder b) {
         this.modsDir          = b.modsDir;
@@ -51,8 +62,10 @@ public final class BootOptions {
         this.cacheDir         = b.cacheDir;
         this.strict           = b.strict;
         this.skipDiscovery    = b.skipDiscovery;
-        this.vidaVersion      = b.vidaVersion;
-        this.minecraftVersion = b.minecraftVersion;
+        this.vidaVersion          = b.vidaVersion;
+        this.minecraftVersion     = b.minecraftVersion;
+        this.platformProfileId    = b.platformProfileId;
+        this.accessDeniedIds      = Set.copyOf(b.accessDeniedIds);
     }
 
     public Path modsDir()               { return modsDir; }
@@ -61,6 +74,12 @@ public final class BootOptions {
     public Path cacheDir()              { return cacheDir; }
     public boolean strict()             { return strict; }
     public boolean skipDiscovery()      { return skipDiscovery; }
+
+    /**
+     * Id модов, которые резолвер не имеет права выбирать (политика лаунчера / JVM).
+     * Пустое множество — поведение по умолчанию.
+     */
+    public Set<String> accessDeniedIds() { return accessDeniedIds; }
 
     /**
      * Явно заданная версия платформы Vida для синтетического провайдера
@@ -78,6 +97,15 @@ public final class BootOptions {
     public Optional<String> minecraftVersion() { return Optional.ofNullable(minecraftVersion); }
 
     /**
+     * Явный идентификатор профиля платформы (каталог под
+     * {@code META-INF/vida/platform-profiles/}). Если пусто — рантайм может
+     * подставить значение из {@code -Dvida.platformProfile}.
+     */
+    public Optional<String> platformProfileId() {
+        return Optional.ofNullable(platformProfileId);
+    }
+
+    /**
      * Возвращает копию этих параметров с заменённым {@code modsDir}.
      * Используется для авто-определения директории модов в агенте.
      */
@@ -89,12 +117,35 @@ public final class BootOptions {
         b.skipDiscovery(this.skipDiscovery);
         b.vidaVersion(this.vidaVersion);
         b.minecraftVersion(this.minecraftVersion);
+        b.platformProfile(this.platformProfileId);
         for (Path p : this.extraSources) b.addExtraSource(p);
         for (Path p : this.gameJars)     b.addGameJar(p);
+        for (String id : this.accessDeniedIds) {
+            b.addAccessDenied(id);
+        }
         return b.build();
     }
 
     public static Builder builder() { return new Builder(); }
+
+    /**
+     * Разбивает строку со списком id модов (запятые, без пробелов в самом id).
+     * Пустые сегменты отбрасываются. Не проверяет {@link ModManifest#ID_PATTERN} —
+     * валидация в {@link Builder#addAccessDenied(String)}.
+     */
+    public static LinkedHashSet<String> parseCommaSeparatedIds(String raw) {
+        LinkedHashSet<String> out = new LinkedHashSet<>();
+        if (raw == null || raw.isBlank()) {
+            return out;
+        }
+        for (String part : raw.split(",")) {
+            String s = part.trim();
+            if (!s.isEmpty()) {
+                out.add(s);
+            }
+        }
+        return out;
+    }
 
     public static final class Builder {
         private Path modsDir;
@@ -105,6 +156,8 @@ public final class BootOptions {
         private boolean skipDiscovery = false;
         private String vidaVersion;
         private String minecraftVersion;
+        private String platformProfileId;
+        private final LinkedHashSet<String> accessDeniedIds = new LinkedHashSet<>();
 
         public Builder modsDir(Path p)        { this.modsDir = p; return this; }
         public Builder addExtraSource(Path p) {
@@ -136,6 +189,43 @@ public final class BootOptions {
          */
         public Builder minecraftVersion(String v) {
             this.minecraftVersion = (v == null || v.isBlank()) ? null : v.trim();
+            return this;
+        }
+
+        /**
+         * Идентификатор профиля платформы ({@code null} или пустая строка —
+         * отключено).
+         */
+        public Builder platformProfile(String id) {
+            this.platformProfileId = (id == null || id.isBlank()) ? null : id.trim();
+            return this;
+        }
+
+        /**
+         * Полная замена набора запрещённых id (копируется в билдер).
+         */
+        public Builder accessDenied(Collection<String> ids) {
+            this.accessDeniedIds.clear();
+            if (ids != null) {
+                for (String id : ids) {
+                    addAccessDenied(id);
+                }
+            }
+            return this;
+        }
+
+        /**
+         * Добавляет один id в политику доступа ({@link ModManifest#ID_PATTERN}).
+         */
+        public Builder addAccessDenied(String id) {
+            if (id == null || id.isBlank()) {
+                return this;
+            }
+            String s = id.trim();
+            if (!s.matches(ModManifest.ID_PATTERN)) {
+                return this;
+            }
+            accessDeniedIds.add(s);
             return this;
         }
 

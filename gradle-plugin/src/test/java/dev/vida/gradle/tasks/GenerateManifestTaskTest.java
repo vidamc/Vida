@@ -6,6 +6,7 @@ package dev.vida.gradle.tasks;
 
 import static org.assertj.core.api.Assertions.*;
 
+import dev.vida.core.VersionRange;
 import dev.vida.gradle.VidaExtension;
 import dev.vida.gradle.VidaPlugin;
 import dev.vida.manifest.ManifestParser;
@@ -48,6 +49,54 @@ final class GenerateManifestTaskTest {
         assertThat(r.isOk()).as("parseable: %s", json).isTrue();
         assertThat(r.unwrap().id()).isEqualTo("demo");
         assertThat(r.unwrap().entrypoints().main()).containsExactly("com.ejemplo.Demo");
+        assertThat(r.unwrap().dependencies().required())
+                .containsEntry("vida", VersionRange.parse("^0.1"));
+    }
+
+    @Test
+    void injects_default_vida_dependency_when_not_declared() throws Exception {
+        File projDir = Files.createTempDirectory("vida-plugin-test-inject").toFile();
+        projDir.deleteOnExit();
+
+        Project p = ProjectBuilder.builder().withProjectDir(projDir).withName("solo").build();
+        p.setVersion("1.0.0");
+        p.getPluginManager().apply(VidaPlugin.PLUGIN_ID);
+
+        VidaExtension ext = (VidaExtension) p.getExtensions().getByName(VidaPlugin.EXTENSION_NAME);
+        ext.getMod().getEntrypoint().set("x.Y");
+        ext.getInjectDefaultVidaDependency().set(true);
+        ext.getDefaultVidaDependencyRange().set("^2.0.0");
+
+        GenerateManifestTask task = (GenerateManifestTask)
+                p.getTasks().getByName(VidaPlugin.TASK_GENERATE_MANIFEST);
+        invokeActions(task);
+
+        var r = ManifestParser.parse(Files.readString(task.getOutput().get().getAsFile().toPath()));
+        assertThat(r.isOk()).isTrue();
+        assertThat(r.unwrap().dependencies().required())
+                .containsEntry("vida", VersionRange.parse("^2.0.0"));
+    }
+
+    @Test
+    void inject_off_leaves_dependencies_empty_when_user_set_none() throws Exception {
+        File projDir = Files.createTempDirectory("vida-plugin-test-noinject").toFile();
+        projDir.deleteOnExit();
+
+        Project p = ProjectBuilder.builder().withProjectDir(projDir).withName("solo").build();
+        p.setVersion("1.0.0");
+        p.getPluginManager().apply(VidaPlugin.PLUGIN_ID);
+
+        VidaExtension ext = (VidaExtension) p.getExtensions().getByName(VidaPlugin.EXTENSION_NAME);
+        ext.getMod().getEntrypoint().set("x.Y");
+        ext.getInjectDefaultVidaDependency().set(false);
+
+        GenerateManifestTask task = (GenerateManifestTask)
+                p.getTasks().getByName(VidaPlugin.TASK_GENERATE_MANIFEST);
+        invokeActions(task);
+
+        var r = ManifestParser.parse(Files.readString(task.getOutput().get().getAsFile().toPath()));
+        assertThat(r.isOk()).isTrue();
+        assertThat(r.unwrap().dependencies().required()).isEmpty();
     }
 
     private static void invokeActions(Task t) throws Exception {

@@ -10,7 +10,7 @@ import dev.vida.core.Identifier;
 /**
  * Общий маркер типизированного entity data-component.
  */
-@ApiStatus.Preview("entidad")
+@ApiStatus.Stable
 public sealed interface ComponenteEntidad permits
         ComponenteEntidad.Salud,
         ComponenteEntidad.VelocidadMovimiento,

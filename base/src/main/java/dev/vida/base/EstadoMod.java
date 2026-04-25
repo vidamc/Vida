@@ -16,7 +16,7 @@ import dev.vida.core.ApiStatus;
  * <p>{@link #FALLO} — terminal state, куда мод может попасть из любого
  * предыдущего при неисправимой ошибке.
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public enum EstadoMod {
 
     /** JAR-мод распакован, classes найдены, {@link VidaMod} ещё не вызван. */

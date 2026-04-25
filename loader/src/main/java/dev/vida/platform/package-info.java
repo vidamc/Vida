@@ -12,12 +12,13 @@
  * <ul>
  *   <li>{@link dev.vida.platform.PlatformBridge} — интерфейс моста.</li>
  *   <li>{@link dev.vida.platform.VanillaBridge} — дефолтная реализация: счётчик
- *       тиков, экран-резолвер через reflection и публикация
- *       {@link dev.vida.base.latidos.eventos.LatidoPulso} /
+ *       тиков, размер GUI и вызовы vanilla через закэшированные
+ *       {@link java.lang.invoke.MethodHandle} (без {@code Method.invoke} на
+ *       горячем пути); публикация {@link dev.vida.base.latidos.eventos.LatidoPulso} /
  *       {@link dev.vida.render.LatidoRenderHud}.</li>
  *   <li>{@link dev.vida.platform.MinecraftTickMorph} — {@code @VifadaMorph} на
  *       {@code net.minecraft.client.Minecraft#tick()V}; рассылает
- *       {@code LatidoPulso} каждый кадр клиента.</li>
+ *       {@code LatidoPulso} каждый клиентский тик (20&nbsp;Hz).</li>
  *   <li>{@link dev.vida.platform.GuiRenderMorph} — {@code @VifadaMorph} на
  *       {@code net.minecraft.client.gui.Gui#render(GuiGraphics,float)V};
  *       рассылает {@code LatidoRenderHud} каждый HUD-кадр.</li>

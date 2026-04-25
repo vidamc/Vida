@@ -18,7 +18,7 @@ import java.util.Optional;
  *
  * @param <T> тип значения
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public final class Inscripcion<T> {
 
     private final Catalogo<T> catalogo;

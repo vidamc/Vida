@@ -19,7 +19,7 @@ import java.util.Objects;
  * <p>Четыре стандартных материала доступны как константы; пользовательские
  * создаются через {@link #personalizado(String, NivelHerramienta, int, float, float, int)}.
  */
-@ApiStatus.Preview("objeto")
+@ApiStatus.Stable
 public record Material(
         String nombre,
         NivelHerramienta nivelAddicion,

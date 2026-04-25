@@ -4,9 +4,13 @@
  */
 
 /**
- * Публичный сетевой API Vida: версиярованные пакеты, record-codecs и back-pressure.
+ * Публичный сетевой API Vida (контур <em>Tejido</em> в терминологии проекта):
+ * версионируемые пакеты, record-codecs и back-pressure.
+ *
+ * <p>Отвечает за канал клиент↔сервер; игровая модель мира остаётся в {@code vida-mundo},
+ * точки входа мода и события — в {@code vida-base}.
  */
-@ApiStatus.Preview("red")
+@ApiStatus.Stable
 package dev.vida.red;
 
 import dev.vida.core.ApiStatus;

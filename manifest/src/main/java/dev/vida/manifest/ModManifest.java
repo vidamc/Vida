@@ -34,6 +34,7 @@ public record ModManifest(
         VifadaConfig vifada,
         List<String> puertas,
         List<String> modules,
+        List<EscultorDeclaracion> escultores,
         List<String> incompatibilities,
         Map<String, Object> custom) {
 
@@ -66,6 +67,7 @@ public record ModManifest(
         authors           = List.copyOf(Objects.requireNonNull(authors, "authors"));
         puertas           = List.copyOf(Objects.requireNonNull(puertas, "puertas"));
         modules           = List.copyOf(Objects.requireNonNull(modules, "modules"));
+        escultores        = List.copyOf(Objects.requireNonNull(escultores, "escultores"));
         incompatibilities = List.copyOf(Objects.requireNonNull(incompatibilities, "incompatibilities"));
         custom            = Map.copyOf(Objects.requireNonNull(custom, "custom"));
     }
@@ -97,6 +99,7 @@ public record ModManifest(
         private VifadaConfig vifada = VifadaConfig.EMPTY;
         private List<String> puertas = List.of();
         private List<String> modules = List.of();
+        private List<EscultorDeclaracion> escultores = List.of();
         private List<String> incompatibilities = List.of();
         private Map<String, Object> custom = Map.of();
 
@@ -115,6 +118,7 @@ public record ModManifest(
         public Builder vifada(VifadaConfig v) { this.vifada = v; return this; }
         public Builder puertas(List<String> v) { this.puertas = v; return this; }
         public Builder modules(List<String> v) { this.modules = v; return this; }
+        public Builder escultores(List<EscultorDeclaracion> v) { this.escultores = v; return this; }
         public Builder incompatibilities(List<String> v) { this.incompatibilities = v; return this; }
         public Builder custom(Map<String, Object> v) { this.custom = v; return this; }
 
@@ -123,7 +127,7 @@ public record ModManifest(
                     schema, id, version, name,
                     description, authors, license,
                     entrypoints, dependencies, vifada,
-                    puertas, modules, incompatibilities, custom);
+                    puertas, modules, escultores, incompatibilities, custom);
         }
     }
 }

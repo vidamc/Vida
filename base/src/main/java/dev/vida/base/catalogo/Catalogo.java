@@ -26,7 +26,7 @@ import java.util.Optional;
  *
  * @param <T> тип значений
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public interface Catalogo<T> {
 
     /** Идентификатор самого реестра. */

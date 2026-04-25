@@ -22,7 +22,7 @@
  * <p>Модуль совместим и с клиентом, и с сервером; vanilla-мост живёт в
  * будущем {@code vida-mundo}.
  */
-@ApiStatus.Preview("objeto")
+@ApiStatus.Stable
 package dev.vida.objeto;
 
 import dev.vida.core.ApiStatus;

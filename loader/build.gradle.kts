@@ -25,6 +25,9 @@ dependencies {
     api(project(":discovery"))
     api(project(":resolver"))
     api(project(":vifada"))
+    api(project(":escultores"))
+    api(project(":fuente"))
+    api(project(":mundo"))
     api(project(":base"))
     api(project(":render"))
     api(project(":cartografia"))
@@ -40,6 +43,16 @@ dependencies {
     testRuntimeOnly(libs.logback.classic)
 }
 
+// Contract tests read the same list as the shipped META-INF resource.
+tasks.named<org.gradle.api.tasks.Copy>("processTestResources") {
+    val supportedList = rootProject.layout.projectDirectory.file("platform-profiles/supported-contract-profiles.txt")
+    inputs.file(supportedList).withPropertyName("supportedContractProfiles")
+    from(supportedList) {
+        into(".")
+        rename { "supported-contract-profiles.txt" }
+    }
+}
+
 // ------------------------------------------------------------------------
 //  Version-stamping: подставляем актуальную project.version в properties
 //  файл загрузчика, чтобы синтетический провайдер "vida" знал свою версию.
@@ -47,6 +60,17 @@ dependencies {
 tasks.named<ProcessResources>("processResources") {
     val vidaVersion = project.version.toString()
     inputs.property("vidaVersion", vidaVersion)
+    val platformProfiles = rootProject.layout.projectDirectory.dir("platform-profiles/generations")
+    inputs.dir(platformProfiles).withPropertyName("platformProfiles")
+    from(platformProfiles) {
+        into("META-INF/vida/platform-profiles")
+    }
+    val supportedList = rootProject.layout.projectDirectory.file("platform-profiles/supported-contract-profiles.txt")
+    inputs.file(supportedList).withPropertyName("supportedContractProfiles")
+    from(supportedList) {
+        into("META-INF/vida")
+        rename { "supported-contract-profiles.txt" }
+    }
     filesMatching("META-INF/vida/loader-version.properties") {
         expand(mapOf("vidaVersion" to vidaVersion))
     }

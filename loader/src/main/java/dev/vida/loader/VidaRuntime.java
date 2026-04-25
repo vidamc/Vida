@@ -14,7 +14,7 @@ import java.util.Optional;
  * этого {@link #current()} возвращает одно и то же значение до завершения
  * процесса. Повторная установка — программная ошибка ({@link IllegalStateException}).
  */
-@ApiStatus.Preview("loader")
+@ApiStatus.Stable
 public final class VidaRuntime {
 
     private static volatile VidaEnvironment ENV;

@@ -50,12 +50,15 @@ class ResolverLimitsTest {
         ResolverOptions pinned = base
                 .withPin("a", dev.vida.core.Version.of(1, 0, 0))
                 .withExclude("b")
+                .withAccessDenied("policy-blocked")
                 .withSkipOptional(true);
         assertTrue(base.pins().isEmpty());
         assertTrue(base.excludes().isEmpty());
+        assertTrue(base.accessDeniedIds().isEmpty());
         assertTrue(!base.skipOptional());
         assertTrue(pinned.pins().containsKey("a"));
         assertTrue(pinned.excludes().contains("b"));
+        assertTrue(pinned.accessDeniedIds().contains("policy-blocked"));
         assertTrue(pinned.skipOptional());
     }
 }

@@ -5,11 +5,14 @@
 package dev.vida.installer.launchers.curseforge;
 
 import dev.vida.installer.mc.JsonTree;
+import dev.vida.installer.mc.VidaInstallerJvm;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Map;
+import java.util.regex.Matcher;
 
 /**
  * Патчер {@code minecraftinstance.json} для CurseForge App.
@@ -30,7 +33,8 @@ final class CurseForgeJsonPatcher {
      * {@code -javaagent:<loaderPath>} в {@code javaArgsOverride}.
      */
     @SuppressWarnings("unchecked")
-    static Result patch(Path instanceJson, String loaderAbsPath) throws IOException {
+    static Result patch(Path instanceJson, String loaderAbsPath,
+                        String minecraftVersion, String loaderVersion) throws IOException {
         String raw = Files.readString(instanceJson, StandardCharsets.UTF_8);
         Object tree = JsonTree.parse(raw);
         if (!(tree instanceof Map<?, ?> mapRaw)) {
@@ -43,22 +47,33 @@ final class CurseForgeJsonPatcher {
         String prevStr = prev instanceof String s ? s : null;
         boolean alreadyAgent = false;
 
-        if (prevStr != null && !prevStr.isBlank()) {
-            if (prevStr.contains("-javaagent:")) {
+        String vidaJvm = VidaInstallerJvm.spaceSeparatedInstallerJvmProps(minecraftVersion, loaderVersion);
+        String base = VidaInstallerJvm.stripManagedInstallerJvmTokens(prevStr != null ? prevStr : "");
+
+        if (!base.isBlank()) {
+            if (base.contains("-javaagent:")) {
                 alreadyAgent = true;
-                String patched = prevStr.replaceAll(
+                String patched = base.replaceAll(
                         "-javaagent:\\S+",
-                        agentArg.replace("\\", "\\\\"));
-                root.put("javaArgsOverride", patched);
+                        Matcher.quoteReplacement(agentArg));
+                patched = patched.trim() + " " + vidaJvm;
+                root.put("javaArgsOverride", patched.trim());
             } else {
-                root.put("javaArgsOverride", prevStr.trim() + " " + agentArg);
+                root.put("javaArgsOverride", base.trim() + " " + agentArg + " " + vidaJvm);
             }
         } else {
-            root.put("javaArgsOverride", agentArg);
+            root.put("javaArgsOverride", agentArg + " " + vidaJvm);
         }
 
         String json = JsonTree.write(root);
-        Files.writeString(instanceJson, json, StandardCharsets.UTF_8);
+        Path tmp = instanceJson.resolveSibling(instanceJson.getFileName() + ".tmp");
+        Files.writeString(tmp, json, StandardCharsets.UTF_8);
+        try {
+            Files.move(tmp, instanceJson, StandardCopyOption.REPLACE_EXISTING,
+                    StandardCopyOption.ATOMIC_MOVE);
+        } catch (IOException atomicFail) {
+            Files.move(tmp, instanceJson, StandardCopyOption.REPLACE_EXISTING);
+        }
 
         return new Result(alreadyAgent, prevStr);
     }

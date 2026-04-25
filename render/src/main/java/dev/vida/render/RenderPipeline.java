@@ -25,7 +25,7 @@ import java.util.Objects;
  *   <li>неизвестная текстура автоматически заменяется на atlas missing-texture.</li>
  * </ul>
  */
-@ApiStatus.Preview("render")
+@ApiStatus.Stable
 public final class RenderPipeline {
 
     private final TextureAtlas atlas;

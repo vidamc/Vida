@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vida.dev/schema/platform-profile.schema.json",
+  "title": "Vida platform profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profileId", "gameVersion", "generation", "mappings"],
+  "properties": {
+    "profileId": {
+      "type": "string",
+      "description": "Stable id, conventionally `<generation-folder>/<gameVersion>` e.g. legacy-121/1.21.1"
+    },
+    "gameVersion": {
+      "type": "string",
+      "description": "Minecraft release string this profile targets (e.g. 1.21.1)."
+    },
+    "generation": {
+      "type": "string",
+      "enum": ["LEGACY_121", "CALENDAR_26"],
+      "description": "Logical platform generation label."
+    },
+    "mappings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strategy"],
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": ["GAME_DIR_PROGUARD", "CLASSPATH_PROGUARD"],
+          "description": "GAME_DIR_PROGUARD: resolve ProGuard client_mappings under .minecraft/versions/<gameVersion>. CLASSPATH_PROGUARD: load mappings from classpathResource."
+        },
+        "classpathResource": {
+          "type": "string",
+          "description": "Full classpath path when strategy is CLASSPATH_PROGUARD."
+        }
+      }
+    },
+    "mappingMode": {
+      "type": "string",
+      "description": "Opaque label for Cartografía import policy (future use)."
+    },
+    "platformBridge": {
+      "type": "string",
+      "description": "Optional default FQCN for PlatformBridge implementation."
+    },
+    "morphBundle": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "description": "When set, only these platform morph classes (FQCN) are registered from the loader jar."
+    },
+    "clientJar": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{64}$",
+          "description": "Expected SHA-256 of the vanilla client jar (hex, no prefix)."
+        }
+      }
+    },
+    "minimumJavaVersion": {
+      "type": "integer",
+      "minimum": 8
+    },
+    "recommendedJavaVersion": {
+      "type": "integer",
+      "minimum": 8
+    },
+    "dataPackFormat": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "resourcePackFormat": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

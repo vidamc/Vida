@@ -15,9 +15,10 @@ import java.lang.annotation.Target;
  * нужно вызывать обработчик при авто-регистрации подписок через
  * {@link LatidoRegistrador}.
  *
- * <p>Reflection-биндер {@link LatidoRegistrador#registrarEnObjeto(LatidoBus, Object)}
- * сканирует методы, помеченные этой аннотацией, и автоматически подписывает
- * их на соответствующий канал событий.
+ * <p>{@link LatidoRegistrador#registrarEnObjeto(LatidoBus, Object)} сканирует
+ * методы, помеченные этой аннотацией, и автоматически подписывает их на
+ * соответствующий канал событий (рантайм-вызов по возможности через
+ * {@link java.lang.invoke.MethodHandle}).
  *
  * <h2>Применение</h2>
  * <pre>{@code
@@ -37,7 +38,7 @@ import java.lang.annotation.Target;
  * @see LatidoRegistrador
  * @see Ejecutor
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface EjecutorLatido {

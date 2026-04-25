@@ -40,7 +40,9 @@ final class MultiMCHandlerIT {
         assertThat(cfg)
                 .contains("OverrideJavaArgs=true")
                 .contains("JvmArgs=-javaagent:")
-                .contains("loader-0.1.0.jar");
+                .contains("loader-0.1.0.jar")
+                .contains("-Dvida.minecraftVersion=1.21.1")
+                .contains("-Dvida.platformProfile=legacy-121/1.21.1");
 
         String patchJson = Files.readString(inst.resolve("patches/dev.vida.loader.json"),
                 StandardCharsets.UTF_8);

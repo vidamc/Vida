@@ -17,6 +17,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
+import jdk.jfr.Category;
+import jdk.jfr.Description;
+import jdk.jfr.Event;
+import jdk.jfr.Label;
 
 /**
  * Publico-facing facade управляемого thread-pool'а Vida.
@@ -46,7 +50,7 @@ import java.util.function.Supplier;
  *   sus.detener();
  * }</pre>
  */
-@ApiStatus.Preview("susurro")
+@ApiStatus.Stable
 public final class Susurro implements AutoCloseable {
 
     private static final Log LOG = Log.of(Susurro.class);
@@ -88,7 +92,9 @@ public final class Susurro implements AutoCloseable {
                     throw new RejectedExecutionException("susurro pool отклонил задачу");
                 });
         pool.allowCoreThreadTimeOut(true);
-        return new Susurro(pool, p);
+        Susurro sus = new Susurro(pool, p);
+        SusurroGlobales.registrar(sus);
+        return sus;
     }
 
     // ------------------------------------------------------------------ public API
@@ -111,6 +117,23 @@ public final class Susurro implements AutoCloseable {
 
         // Back-pressure: проверяем лимиты до submit.
         if (pendientes.get() >= politica.maxCola()) {
+            if (politica.estrategiaColaLlena() == EstrategiaColaLlena.EJECUTOR_LLAMANTE) {
+                CompletableFuture<T> cf = new CompletableFuture<>();
+                Tarea<T> tarea = new Tarea<>(cf);
+                SusurroTareaJf evt = new SusurroTareaJf();
+                evt.etiqueta = etiqueta.valor();
+                evt.begin();
+                try {
+                    T res = trabajo.get();
+                    cf.complete(res);
+                    completadas.incrementAndGet();
+                } catch (Throwable t) {
+                    cf.completeExceptionally(t);
+                } finally {
+                    evt.commit();
+                }
+                return tarea;
+            }
             rechazadas.incrementAndGet();
             CompletableFuture<T> fallido = new CompletableFuture<>();
             fallido.completeExceptionally(new RejectedExecutionException(
@@ -158,10 +181,15 @@ public final class Susurro implements AutoCloseable {
 
     /** Аккуратно остановить пул. Ожидает до 5 секунд. */
     public void detener() {
+        detenerEsperando(5_000L);
+    }
+
+    void detenerEsperando(long esperaMsMax) {
         pool.shutdown();
         try {
-            if (!pool.awaitTermination(5, TimeUnit.SECONDS)) {
-                LOG.warn("susurro pool не остановился за 5 сек, выкидываю interrupt");
+            long ms = Math.max(1L, esperaMsMax);
+            if (!pool.awaitTermination(ms, TimeUnit.MILLISECONDS)) {
+                LOG.warn("susurro pool не остановился за {} ms, shutdownNow", ms);
                 pool.shutdownNow();
             }
         } catch (InterruptedException ie) {
@@ -188,18 +216,48 @@ public final class Susurro implements AutoCloseable {
     //                            Politica
     // ================================================================
 
+    /** Политика при полной общей очереди задач (back-pressure). */
+    public enum EstrategiaColaLlena {
+        /** Отклонять новые задачи — как у стандартного ThreadPoolExecutor. */
+        RECHAZAR,
+        /** Выполнять работу в потоке вызывающего (без роста очереди). */
+        EJECUTOR_LLAMANTE
+    }
+
     /** Настройки пула. Иммутабельные. */
-    public record Politica(int workers, int maxCola, int maxPorEtiqueta) {
+    public record Politica(
+            int workers,
+            int maxCola,
+            int maxPorEtiqueta,
+            EstrategiaColaLlena estrategiaColaLlena,
+            long apagadoEsperaMsMax) {
+
         public Politica {
             if (workers < 1) throw new IllegalArgumentException("workers < 1");
             if (maxCola < 1) throw new IllegalArgumentException("maxCola < 1");
             if (maxPorEtiqueta < 0) throw new IllegalArgumentException("maxPorEtiqueta < 0");
+            Objects.requireNonNull(estrategiaColaLlena, "estrategiaColaLlena");
+            if (apagadoEsperaMsMax < 1L) {
+                throw new IllegalArgumentException("apagadoEsperaMsMax < 1");
+            }
+        }
+
+        /** Совместимость со старыми конструкторами: стратегия {@link EstrategiaColaLlena#RECHAZAR}. */
+        public Politica(int workers, int maxCola, int maxPorEtiqueta) {
+            this(workers, maxCola, maxPorEtiqueta, EstrategiaColaLlena.RECHAZAR, 30_000L);
         }
 
         public static Politica porDefecto() {
             int w = Math.max(2, Runtime.getRuntime().availableProcessors() / 2);
             return new Politica(w, 1024, 0 /* 0 = без лимита */);
         }
+    }
+
+    @Category("vida")
+    @Label("Susurro Tarea")
+    @Description("Ejecución de trabajo en Susurro")
+    private static class SusurroTareaJf extends Event {
+        String etiqueta;
     }
 
     /** Снимок метрик. */
@@ -245,23 +303,30 @@ public final class Susurro implements AutoCloseable {
 
         @Override
         public void run() {
-            tarea.marcarIniciada();
-            if (tarea.revisada()) {
-                onTerminada(act);
-                tarea.futuro().completeExceptionally(
-                        new java.util.concurrent.CancellationException("tarea cancelada antes de iniciar"));
-                return;
-            }
-            T res;
+            SusurroTareaJf evt = new SusurroTareaJf();
+            evt.etiqueta = etiqueta.valor();
+            evt.begin();
             try {
-                res = trabajo.get();
-            } catch (Throwable t) {
+                tarea.marcarIniciada();
+                if (tarea.revisada()) {
+                    onTerminada(act);
+                    tarea.futuro().completeExceptionally(
+                            new java.util.concurrent.CancellationException("tarea cancelada antes de iniciar"));
+                    return;
+                }
+                T res;
+                try {
+                    res = trabajo.get();
+                } catch (Throwable t) {
+                    onTerminada(act);
+                    tarea.futuro().completeExceptionally(t);
+                    return;
+                }
                 onTerminada(act);
-                tarea.futuro().completeExceptionally(t);
-                return;
+                tarea.futuro().complete(res);
+            } finally {
+                evt.commit();
             }
-            onTerminada(act);
-            tarea.futuro().complete(res);
         }
     }
 

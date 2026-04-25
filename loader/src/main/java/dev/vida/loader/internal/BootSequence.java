@@ -7,7 +7,11 @@ package dev.vida.loader.internal;
 import dev.vida.base.DefaultModContext;
 import dev.vida.base.LatidoGlobal;
 import dev.vida.base.ModMetadata;
+import dev.vida.base.ModulosInstaladosGlobal;
 import dev.vida.base.VidaMod;
+import dev.vida.base.latidos.eventos.FaseCicloMod;
+import dev.vida.base.latidos.eventos.LatidoArranque;
+import dev.vida.base.latidos.eventos.LatidoFaseCiclo;
 import dev.vida.base.ajustes.AjustesTipados;
 import dev.vida.base.catalogo.CatalogoManejador;
 import dev.vida.base.latidos.LatidoBus;
@@ -17,6 +21,7 @@ import dev.vida.core.Log;
 import dev.vida.discovery.DiscoveryError;
 import dev.vida.discovery.DiscoveryReport;
 import dev.vida.discovery.ModCandidate;
+import dev.vida.discovery.ModSource;
 import dev.vida.discovery.ModScanner;
 import dev.vida.discovery.ScanOptions;
 import dev.vida.discovery.ZipReader;
@@ -26,11 +31,17 @@ import dev.vida.loader.JuegoLoader;
 import dev.vida.loader.LoaderError;
 import dev.vida.loader.ModLoader;
 import dev.vida.loader.MorphIndex;
+import dev.vida.loader.TransformBytecodeCache;
 import dev.vida.loader.VidaClassTransformer;
 import dev.vida.loader.VidaEnvironment;
-import dev.vida.platform.VanillaBridge;
-import dev.vida.loader.fuente.FuenteContenidoMod;
-import dev.vida.loader.fuente.FuentePrototipoParser;
+import dev.vida.loader.profile.PlatformProfileDescriptor;
+import dev.vida.loader.profile.PlatformProfileLoader;
+import dev.vida.platform.PlatformBridgeSupport;
+import dev.vida.vifada.MorphMethodResolution;
+import dev.vida.escultores.Escultor;
+import dev.vida.fuente.FuenteContenidoMod;
+import dev.vida.fuente.FuentePrototipoParser;
+import dev.vida.manifest.EscultorDeclaracion;
 import dev.vida.manifest.ModManifest;
 import dev.vida.resolver.ManifestAdapter;
 import dev.vida.resolver.Provider;
@@ -41,16 +52,24 @@ import dev.vida.resolver.ResolverOptions;
 import dev.vida.resolver.Universe;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.CodeSource;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.jar.JarFile;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.zip.ZipException;
 
@@ -71,9 +90,34 @@ public final class BootSequence {
         long startNs = System.nanoTime();
         Instant startedAt = Instant.now();
         List<LoaderError> errors = new ArrayList<>();
+        ClientEntrypointScheduler.resetForNewBootSession();
 
         if (options == null) {
             errors.add(new LoaderError.InvalidOptions("BootOptions must not be null"));
+            return new BootReport(null, errors, Duration.ofNanos(System.nanoTime() - startNs));
+        }
+
+        PlatformProfileLoader.ResolveResult profileRes = PlatformProfileLoader.resolve(options);
+        if (profileRes.failureMessage().isPresent()) {
+            errors.add(new LoaderError.BootFailure(profileRes.failureMessage().get()));
+            return new BootReport(null, errors, Duration.ofNanos(System.nanoTime() - startNs));
+        }
+        Optional<PlatformProfileDescriptor> platformProfile = profileRes.descriptor();
+        platformProfile.ifPresent(d -> LOG.info("Vida: platform profile {}", d.profileId()));
+        platformProfile.ifPresent(p -> p.minimumJavaVersion().ifPresent(min -> {
+            int feat = Runtime.version().feature();
+            if (feat < min) {
+                errors.add(new LoaderError.BootFailure(
+                        "platform profile requires Java " + min + " or newer (runtime feature version is "
+                                + feat + ")"));
+            }
+        }));
+        if (!errors.isEmpty()) {
+            return new BootReport(null, errors, Duration.ofNanos(System.nanoTime() - startNs));
+        }
+
+        platformProfile.ifPresent(p -> verifyClientJarShaAgainstProfile(options, p, errors));
+        if (!errors.isEmpty()) {
             return new BootReport(null, errors, Duration.ofNanos(System.nanoTime() - startNs));
         }
 
@@ -82,7 +126,7 @@ public final class BootSequence {
         discoverAll(options, errors, candidates);
 
         // ---- 2. Resolve -------------------------------------------------
-        Resolution resolution = resolveDependencies(options, candidates, errors);
+        Resolution resolution = resolveDependencies(options, candidates, errors, platformProfile);
 
         List<ModManifest> resolvedMods = new ArrayList<>();
         Map<String, ModCandidate> byId = new LinkedHashMap<>();
@@ -102,17 +146,36 @@ public final class BootSequence {
         }
 
         // ---- 3. Collect morphs -----------------------------------------
-        MorphIndex morphs = collectMorphs(resolution, byId, errors);
+        MorphIndex morphs = collectMorphs(resolution, byId, errors, platformProfile);
 
         // ---- 3b. Load obf→deobf class name mappings -------------------
-        Map<String, String> obfToDeobf = loadClassMappings(options);
+        MappingLoader.ClientMappingTables mappingTables =
+                loadClientMappingTables(options, platformProfile);
+        platformProfile.flatMap(PlatformProfileDescriptor::mappingMode)
+                .ifPresent(mode -> LOG.info("Vida: profile mappingMode {}", mode));
 
         // ---- 4. ClassLoaders -------------------------------------------
         Consumer<LoaderError> sink = e -> { synchronized (errors) { errors.add(e); } };
-        VidaClassTransformer transformer = new VidaClassTransformer(morphs, sink, obfToDeobf);
+        MorphMethodResolution methodRes = mappingTables.tree() != null
+                ? new CartografiaMorphMethodResolution(mappingTables.tree())
+                : null;
+        TransformBytecodeCache bytecodeCache = openTransformCache(options);
+        String mappingFp = mappingTables.fingerprint();
+        if (platformProfile.isPresent()) {
+            mappingFp = mappingFp + "|pf:" + platformProfile.get().profileId();
+        }
+        VidaClassTransformer transformer = new VidaClassTransformer(
+                morphs,
+                sink,
+                mappingTables.obfToMojmapClass(),
+                methodRes,
+                bytecodeCache,
+                mappingFp);
         JuegoLoader juego = new JuegoLoader(toUrls(options.gameJars(), errors),
                 parent == null ? ClassLoader.getSystemClassLoader() : parent, transformer);
-        Map<String, ModLoader> modLoaders = buildModLoaders(resolvedMods, byId, juego, transformer, errors);
+        Map<String, ModLoader> modLoaders =
+                buildModLoaders(resolvedMods, byId, juego, transformer, options, errors);
+        instalarEscultoresDeclarados(resolvedMods, modLoaders, transformer, errors);
 
         // ---- 5. Register with instrumentation if available -------------
         //
@@ -126,6 +189,7 @@ public final class BootSequence {
             try {
                 inst.addTransformer(transformer, false);
                 LOG.info("Vida class transformer attached to Instrumentation");
+                exposeLoaderJarToSystemClassLoaderSearch(inst);
             } catch (RuntimeException ex) {
                 errors.add(new LoaderError.BootFailure(
                         "failed to attach transformer: " + ex.getMessage()));
@@ -143,14 +207,14 @@ public final class BootSequence {
             LatidoGlobal.instalar(latidos);
         }
 
+        ModulosInstaladosGlobal.instalar(List.copyOf(resolvedMods));
+
         // Устанавливаем мост Vida↔vanilla, чтобы платформенные морфы
-        // (MinecraftTickMorph, GuiRenderMorph) имели куда обращаться. Мост
+        // (MinecraftTickMorph, GuiRenderMorph, ServerTickMorph) имели куда обращаться. Мост
         // уважает уже установленный экземпляр (для тестов, подменяющих его
         // на мок). Bridge активен даже при пустом списке модов — это даёт
         // «чистому» Vida рабочую шину тиков/HUD без единого мода.
-        if (VanillaBridge.current() == null) {
-            VanillaBridge.install(new VanillaBridge());
-        }
+        PlatformBridgeSupport.installFromProfile(platformProfile);
 
         // ---- 7. Invoke mod entrypoints ---------------------------------
         invokeEntrypoints(resolvedMods, modLoaders, latidos, catalogos, options, errors);
@@ -164,7 +228,9 @@ public final class BootSequence {
                 .transformer(transformer)
                 .instrumentation(inst)
                 .latidos(latidos)
-                .catalogos(catalogos);
+                .catalogos(catalogos)
+                .clientMappings(mappingTables.tree())
+                .platformProfile(platformProfile);
         for (var e : modLoaders.entrySet()) eb.addModLoader(e.getKey(), e.getValue());
         for (var e : fuenteDataDriven.entrySet()) eb.addFuenteDataDriven(e.getKey(), e.getValue());
         VidaEnvironment env = eb.build();
@@ -255,25 +321,38 @@ public final class BootSequence {
 
     private static Resolution resolveDependencies(BootOptions options,
                                                   List<ModCandidate> candidates,
-                                                  List<LoaderError> errors) {
+                                                  List<LoaderError> errors,
+                                                  Optional<PlatformProfileDescriptor> platformProfile) {
         Universe.Builder ub = Universe.builder();
         java.util.LinkedHashSet<String> rootIds = new java.util.LinkedHashSet<>(candidates.size());
-        for (ModCandidate c : candidates) {
-            Provider p = ManifestAdapter.toProvider(c.manifest(), c);
-            ub.add(p);
-            rootIds.add(c.id());
+        List<ModCandidate> cands = List.copyOf(candidates);
+        List<java.util.Map.Entry<Integer, Provider>> indexed =
+                java.util.stream.IntStream.range(0, cands.size())
+                        .parallel()
+                        .mapToObj(
+                                i -> java.util.Map.entry(
+                                        i, ManifestAdapter.toProvider(cands.get(i).manifest(), cands.get(i))))
+                        .sorted(java.util.Comparator.comparingInt(java.util.Map.Entry::getKey))
+                        .toList();
+        for (var e : indexed) {
+            ub.add(e.getValue());
+            rootIds.add(cands.get(e.getKey()).id());
         }
 
         // Синтетические платформенные провайдеры: vida, minecraft (если
         // передана версия), java. Они попадают в Universe, но не в roots —
         // резолвер выбирает их только когда кто-то их требует.
-        for (Provider synthetic : SyntheticProviders.build(options, rootIds)) {
+        for (Provider synthetic : SyntheticProviders.build(options, rootIds, platformProfile)) {
             ub.add(synthetic);
         }
 
         if (candidates.isEmpty()) return null;
 
-        var rr = Resolver.resolve(rootIds, ub.build(), ResolverOptions.DEFAULTS);
+        ResolverOptions resolverOpts = ResolverOptions.DEFAULTS;
+        if (!options.accessDeniedIds().isEmpty()) {
+            resolverOpts = resolverOpts.withAccessDenied(options.accessDeniedIds());
+        }
+        var rr = Resolver.resolve(rootIds, ub.build(), resolverOpts);
         if (rr.isErr()) {
             errors.add(new LoaderError.ResolutionFailed(rr.unwrapErr()));
             return null;
@@ -283,19 +362,26 @@ public final class BootSequence {
 
     private static MorphIndex collectMorphs(Resolution resolution,
                                             Map<String, ModCandidate> byId,
-                                            List<LoaderError> errors) {
+                                            List<LoaderError> errors,
+                                            Optional<PlatformProfileDescriptor> platformProfile) {
         MorphIndex.Builder b = MorphIndex.builder();
 
-        // Платформенные морфы (MinecraftTickMorph, GuiRenderMorph) регистрируем
+        // Платформенные морфы (MinecraftTickMorph, GuiRenderMorph, ServerTickMorph) регистрируем
         // всегда — даже если резолюция не удалась или кандидатов нет. Они
         // нужны для платформенных событий (LatidoPulso, LatidoRenderHud) и не
         // зависят от наличия модов.
-        PlatformMorphs.register(b);
+        PlatformMorphs.register(b, platformProfile);
 
         if (resolution == null) return b.build();
+        Optional<String> activeProfileId = platformProfile.map(PlatformProfileDescriptor::profileId);
         for (Provider p : resolution.selected().values()) {
             ModCandidate c = byId.get(p.id());
             if (c == null) continue;
+            if (!ModMorphGate.allowMorphsFromMod(c.manifest(), activeProfileId)) {
+                LOG.warn("Vida: skipping Vifada morphs from mod '{}' (custom.vida.platformProfileIds)",
+                        c.manifest().id());
+                continue;
+            }
             try (ZipReader z = c.source().open()) {
                 MorphCollector.collect(z, b);
             } catch (IOException ioe) {
@@ -310,28 +396,37 @@ public final class BootSequence {
             List<ModManifest> resolved,
             Map<String, ModCandidate> byId,
             List<LoaderError> errors) {
-        Map<String, FuenteContenidoMod> out = new LinkedHashMap<>();
-        for (ModManifest manifest : resolved) {
+        ConcurrentHashMap<String, FuenteContenidoMod> out = new ConcurrentHashMap<>();
+        java.util.concurrent.ConcurrentLinkedQueue<LoaderError> q = new java.util.concurrent.ConcurrentLinkedQueue<>();
+        resolved.parallelStream().forEach(manifest -> {
             ModCandidate candidate = byId.get(manifest.id());
             if (candidate == null) {
-                continue;
+                return;
             }
             try (ZipReader zip = candidate.source().open()) {
                 var parsed = FuentePrototipoParser.leer(manifest, zip);
                 if (parsed.isErr()) {
-                    errors.add(new LoaderError.DataDrivenFailure(
+                    q.add(new LoaderError.DataDrivenFailure(
                             candidate.source().id(),
                             parsed.unwrapErr().toString()));
-                    continue;
+                    return;
                 }
                 out.put(manifest.id(), parsed.unwrap());
             } catch (IOException ex) {
-                errors.add(new LoaderError.DataDrivenFailure(
+                q.add(new LoaderError.DataDrivenFailure(
                         candidate.source().id(),
                         ex.getMessage()));
             }
+        });
+        errors.addAll(q);
+        Map<String, FuenteContenidoMod> ordered = new LinkedHashMap<>();
+        for (ModManifest m : resolved) {
+            FuenteContenidoMod v = out.get(m.id());
+            if (v != null) {
+                ordered.put(m.id(), v);
+            }
         }
-        return out;
+        return ordered;
     }
 
     private static URL[] toUrls(List<Path> paths, List<LoaderError> errors) {
@@ -346,24 +441,73 @@ public final class BootSequence {
         return urls.toArray(URL[]::new);
     }
 
+    private static void instalarEscultoresDeclarados(
+            List<ModManifest> resolved,
+            Map<String, ModLoader> modLoaders,
+            VidaClassTransformer transformer,
+            List<LoaderError> errors) {
+        record Ord(Escultor escultor, int priority, int orden) {}
+        List<Ord> tmp = new ArrayList<>();
+        int orden = 0;
+        for (ModManifest m : resolved) {
+            ModLoader ml = modLoaders.get(m.id());
+            if (ml == null) {
+                continue;
+            }
+            for (EscultorDeclaracion ed : m.escultores()) {
+                try {
+                    Class<?> cls = ml.loadClass(ed.className());
+                    Object inst = cls.getDeclaredConstructor().newInstance();
+                    if (!(inst instanceof Escultor esc)) {
+                        errors.add(new LoaderError.BootFailure(
+                                "escultor class '" + ed.className() + "' does not implement Escultor"
+                                        + " in mod '" + m.id() + "'"));
+                        continue;
+                    }
+                    tmp.add(new Ord(esc, ed.priority(), orden++));
+                } catch (ReflectiveOperationException ex) {
+                    errors.add(new LoaderError.BootFailure(
+                            "failed to load escultor '" + ed.className() + "' for mod '" + m.id()
+                                    + "': " + ex.getMessage()));
+                }
+            }
+        }
+        tmp.sort(Comparator.comparingInt(Ord::priority).thenComparingInt(Ord::orden));
+        transformer.instalarEscultoresMod(tmp.stream().map(Ord::escultor).toList());
+    }
+
     private static Map<String, ModLoader> buildModLoaders(List<ModManifest> resolved,
                                                           Map<String, ModCandidate> byId,
                                                           JuegoLoader juego,
                                                           VidaClassTransformer transformer,
+                                                          BootOptions options,
                                                           List<LoaderError> errors) {
         Map<String, ModLoader> out = new LinkedHashMap<>();
         for (ModManifest m : resolved) {
             ModCandidate c = byId.get(m.id());
             if (c == null) continue;
-            if (!(c.source() instanceof dev.vida.discovery.ModSource.OnDisk od)) {
-                // Вложенные моды сейчас пропускаем — их нужно сначала распаковывать.
-                continue;
-            }
             URL[] urls;
-            try {
-                urls = new URL[] { od.path().toUri().toURL() };
-            } catch (MalformedURLException ex) {
-                errors.add(new LoaderError.IoFailure(od.path().toString(), ex.getMessage()));
+            if (c.source() instanceof ModSource.OnDisk od) {
+                try {
+                    urls = new URL[] {od.path().toUri().toURL()};
+                } catch (MalformedURLException ex) {
+                    errors.add(new LoaderError.IoFailure(od.path().toString(), ex.getMessage()));
+                    continue;
+                }
+            } else if (c.source() instanceof ModSource.Embedded) {
+                Path jar = materializeEmbeddedModJar(c, options, errors);
+                if (jar == null) {
+                    continue;
+                }
+                try {
+                    urls = new URL[] {jar.toUri().toURL()};
+                } catch (MalformedURLException ex) {
+                    errors.add(new LoaderError.IoFailure(jar.toString(), ex.getMessage()));
+                    continue;
+                }
+            } else {
+                errors.add(new LoaderError.BootFailure(
+                        "unsupported ModSource for mod '" + m.id() + "': " + c.source()));
                 continue;
             }
             out.put(m.id(), new ModLoader(m.id(), urls, juego, transformer));
@@ -372,12 +516,113 @@ public final class BootSequence {
     }
 
     /**
+     * Вложенный JAR ({@link ModSource.Embedded}) записывается в кеш — у {@link ModLoader}
+     * должен быть стабильный {@link URL} на файл.
+     */
+    private static Path materializeEmbeddedModJar(ModCandidate c, BootOptions options,
+                                                  List<LoaderError> errors) {
+        if (!(c.source() instanceof ModSource.Embedded em)) {
+            return null;
+        }
+        try {
+            Path cacheRoot = options.cacheDir();
+            if (cacheRoot == null) {
+                cacheRoot = VidaCacheLayout.defaultRoot();
+            } else {
+                cacheRoot = cacheRoot.toAbsolutePath().normalize();
+            }
+            Path dir = VidaCacheLayout.embeddedModsDir(cacheRoot).resolve(c.manifest().id());
+            Files.createDirectories(dir);
+            String hash = sha256Hex(em.bytes());
+            Path jar = dir.resolve(hash.substring(0, 16) + ".jar");
+            if (!Files.isRegularFile(jar) || Files.size(jar) != em.bytes().length) {
+                Files.write(jar, em.bytes());
+            }
+            return jar;
+        } catch (IOException | RuntimeException ex) {
+            errors.add(new LoaderError.IoFailure(
+                    c.source().id(), "embedded mod materialize failed: " + ex.getMessage()));
+            return null;
+        }
+    }
+
+    private static String sha256Hex(byte[] data) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] digest = md.digest(data);
+            StringBuilder sb = new StringBuilder(digest.length * 2);
+            for (byte b : digest) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /**
+     * When {@code profile.json} sets {@code clientJar.sha256}, compares it to the file given by
+     * {@code -Dvida.clientJar=&lt;path&gt;} or to the sole {@link BootOptions#gameJars()} entry.
+     */
+    private static void verifyClientJarShaAgainstProfile(
+            BootOptions options,
+            PlatformProfileDescriptor profile,
+            List<LoaderError> errors) {
+        if (profile.clientJarSha256Hex().isEmpty()) {
+            return;
+        }
+        Path jar = resolveClientJarPathForShaCheck(options);
+        if (jar == null) {
+            LOG.warn(
+                    "Vida: profile '{}' declares clientJar.sha256 but neither -Dvida.clientJar nor "
+                            + "exactly one gameJar was provided — skipping SHA check",
+                    profile.profileId());
+            return;
+        }
+        try {
+            if (!Files.isRegularFile(jar)) {
+                errors.add(new LoaderError.IoFailure(jar.toString(), "client jar not found"));
+                return;
+            }
+            byte[] raw = Files.readAllBytes(jar);
+            String actual = sha256Hex(raw);
+            String expected = profile.clientJarSha256Hex().get();
+            if (!actual.equalsIgnoreCase(expected)) {
+                errors.add(new LoaderError.BootFailure(
+                        "client jar SHA-256 mismatch for profile " + profile.profileId()
+                                + ": expected " + expected + " but got " + actual + " (" + jar + ")"));
+            } else {
+                LOG.info("Vida: client jar SHA-256 matches profile {} ({})", profile.profileId(), jar);
+            }
+        } catch (IOException ex) {
+            errors.add(new LoaderError.IoFailure(jar.toString(), ex.getMessage()));
+        }
+    }
+
+    private static Path resolveClientJarPathForShaCheck(BootOptions options) {
+        String prop = System.getProperty("vida.clientJar");
+        if (prop != null && !prop.isBlank()) {
+            return Path.of(prop.trim());
+        }
+        List<Path> gj = options.gameJars();
+        if (gj.size() == 1) {
+            return gj.get(0);
+        }
+        return null;
+    }
+
+    /**
      * Инстанцирует entrypoint-классы каждого резолвнутого мода и вызывает
      * {@link VidaMod#iniciar(dev.vida.base.ModContext)}.
      *
      * <p>Порядок: {@code preLaunch} → {@code main} → {@code client} → {@code server}.
-     * Ошибки при инициализации отдельного мода добавляются в {@code errors} и не
-     * прерывают инициализацию оставшихся модов.
+     * {@code client} откладывается до первого {@code Minecraft.tick()} (см.
+     * {@link ClientEntrypointScheduler}), чтобы {@code iniciar} не вызывал LWJGL/OpenGL
+     * из {@code premain}, когда контекста ещё нет.
+     *
+     * <p>Ошибки при инициализации отдельного мода добавляются в {@code errors} и не
+     * прерывают инициализацию оставшихся модов (для отложенных client-entrypoint ошибки
+     * появляются после первого клиентского тика и не попадают в {@link BootReport}).
      */
     private static void invokeEntrypoints(List<ModManifest> resolved,
                                           Map<String, ModLoader> modLoaders,
@@ -385,19 +630,54 @@ public final class BootSequence {
                                           CatalogoManejador catalogos,
                                           BootOptions options,
                                           List<LoaderError> errors) {
+        int n = resolved.size();
+        emitFase(latidos, FaseCicloMod.PREPARACION, Instant.now(), n);
         for (ModManifest manifest : resolved) {
             ModLoader loader = modLoaders.get(manifest.id());
-            if (loader == null) continue;
-
-            List<String> all = new ArrayList<>();
-            all.addAll(manifest.entrypoints().preLaunch());
-            all.addAll(manifest.entrypoints().main());
-            all.addAll(manifest.entrypoints().client());
-            all.addAll(manifest.entrypoints().server());
-
-            for (String className : all) {
+            if (loader == null) {
+                continue;
+            }
+            for (String className : manifest.entrypoints().preLaunch()) {
                 invokeOne(className, manifest, loader, latidos, catalogos, options, errors);
             }
+        }
+        emitFase(latidos, FaseCicloMod.INICIALIZACION, Instant.now(), n);
+        for (ModManifest manifest : resolved) {
+            ModLoader loader = modLoaders.get(manifest.id());
+            if (loader == null) {
+                continue;
+            }
+            for (String className : manifest.entrypoints().main()) {
+                invokeOne(className, manifest, loader, latidos, catalogos, options, errors);
+            }
+        }
+        emitFase(latidos, FaseCicloMod.POST_INICIALIZACION, Instant.now(), n);
+        for (ModManifest manifest : resolved) {
+            ModLoader loader = modLoaders.get(manifest.id());
+            if (loader == null) {
+                continue;
+            }
+            for (String className : manifest.entrypoints().client()) {
+                final String cn = className;
+                ClientEntrypointScheduler.enqueue(
+                        () -> invokeOne(cn, manifest, loader, latidos, catalogos, options, errors));
+            }
+            for (String className : manifest.entrypoints().server()) {
+                invokeOne(className, manifest, loader, latidos, catalogos, options, errors);
+            }
+        }
+        try {
+            latidos.emitir(LatidoArranque.TIPO, new LatidoArranque(Instant.now(), n));
+        } catch (RuntimeException ex) {
+            LOG.warn("Vida: LatidoArranque dispatch failed ({})", ex.toString());
+        }
+    }
+
+    private static void emitFase(LatidoBus bus, FaseCicloMod fase, Instant momento, int modsTotal) {
+        try {
+            bus.emitir(LatidoFaseCiclo.TIPO, new LatidoFaseCiclo(momento, fase, modsTotal));
+        } catch (RuntimeException ex) {
+            LOG.warn("Vida: LatidoFaseCiclo {} dispatch failed ({})", fase, ex.toString());
         }
     }
 
@@ -458,17 +738,52 @@ public final class BootSequence {
         }
     }
 
-    private static Map<String, String> loadClassMappings(BootOptions options) {
+    private static TransformBytecodeCache openTransformCache(BootOptions options) {
+        if (!Boolean.parseBoolean(System.getProperty("vida.transformCache", "true"))) {
+            return null;
+        }
+        try {
+            Path root = options.cacheDir();
+            if (root == null) {
+                root = VidaCacheLayout.defaultRoot();
+            } else {
+                root = root.toAbsolutePath().normalize();
+            }
+            Path dir = VidaCacheLayout.transformBytecodeDir(root);
+            Files.createDirectories(dir);
+            LOG.info("Vida: transform bytecode cache at {}", dir);
+            return new TransformBytecodeCache(dir);
+        } catch (Exception e) {
+            LOG.warn("Vida: transform bytecode cache disabled: {}", e.toString());
+            return null;
+        }
+    }
+
+    private static MappingLoader.ClientMappingTables loadClientMappingTables(
+            BootOptions options,
+            Optional<PlatformProfileDescriptor> platformProfile) {
         Optional<String> mcVer = options.minecraftVersion();
         if (mcVer.isEmpty()) {
             // Try auto-detected version from classpath
             Optional<dev.vida.core.Version> detected =
-                    SyntheticProviders.resolveMinecraftVersion(options);
+                    SyntheticProviders.resolveMinecraftVersion(options, platformProfile);
             if (detected.isPresent()) {
                 mcVer = Optional.of(detected.get().toString());
             }
         }
-        if (mcVer.isEmpty()) return Map.of();
+        if (mcVer.isEmpty()) {
+            return MappingLoader.ClientMappingTables.empty();
+        }
+
+        final String resolvedMcVersion = mcVer.get();
+        platformProfile.ifPresent(p -> {
+            if (!p.gameVersion().equals(resolvedMcVersion)) {
+                LOG.warn(
+                        "Vida: minecraftVersion {} differs from platform profile gameVersion {}",
+                        resolvedMcVersion,
+                        p.gameVersion());
+            }
+        });
 
         // Resolve .minecraft root from modsDir (modsDir is .minecraft/mods)
         Path gameDir = null;
@@ -479,10 +794,10 @@ public final class BootSequence {
             try {
                 gameDir = Path.of(System.getProperty("user.dir", "."));
             } catch (SecurityException ignored) {
-                return Map.of();
+                return MappingLoader.ClientMappingTables.empty();
             }
         }
-        return MappingLoader.loadClassMap(mcVer.get(), gameDir);
+        return MappingLoader.loadClientMappingTables(resolvedMcVersion, gameDir, platformProfile);
     }
 
     private static Path resolveDataDir(BootOptions options, String modId) {
@@ -493,6 +808,37 @@ public final class BootSequence {
             return options.cacheDir().resolve("mods").resolve(modId);
         }
         return null;
+    }
+
+    /**
+     * Игровые классы часто загружаются через {@code AppClassLoader}; без этого
+     * морфы не могут резолвить классы из fat-agent JAR ({@link dev.vida.loader.ModClassDispatch}
+     * и др.), хотя они есть в том же процессе.
+     *
+     * @see java.lang.instrument.Instrumentation#appendToSystemClassLoaderSearch(java.util.jar.JarFile)
+     */
+    private static void exposeLoaderJarToSystemClassLoaderSearch(
+            java.lang.instrument.Instrumentation inst) {
+        try {
+            CodeSource cs = BootSequence.class.getProtectionDomain().getCodeSource();
+            if (cs == null) {
+                LOG.debug("Vida: BootSequence has no CodeSource; skip appendToSystemClassLoaderSearch");
+                return;
+            }
+            URI uri = cs.getLocation().toURI();
+            Path path = Paths.get(uri);
+            if (!Files.isRegularFile(path)) {
+                LOG.debug(
+                        "Vida: loader code source is not a jar file ({}); skip appendToSystemClassLoaderSearch",
+                        path);
+                return;
+            }
+            JarFile jar = new JarFile(path.toFile(), false);
+            inst.appendToSystemClassLoaderSearch(jar);
+            LOG.info("Vida: appended loader jar to system class search ({})", path);
+        } catch (Exception e) {
+            LOG.warn("Vida: appendToSystemClassLoaderSearch failed: {}", e.toString());
+        }
     }
 
 }

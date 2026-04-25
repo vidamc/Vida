@@ -19,6 +19,7 @@ dependencyResolutionManagement {
     // Единый источник версий — gradle/libs.versions.toml (подхватывается автоматически).
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
+        google()
         mavenCentral()
     }
 }
@@ -26,9 +27,13 @@ dependencyResolutionManagement {
 // ----- Convention plugins (included build) ----------------------------------
 includeBuild("build-logic")
 
+// ----- BOM (aligned versions for consumers) ---------------------------------
+include(":bom")
+
 // ----- Core modules ---------------------------------------------------------
 include(":core")
 include(":manifest")
+include(":fuente")
 include(":config")
 include(":cartografia")
 include(":discovery")
@@ -38,12 +43,14 @@ include(":loader")
 include(":base")
 include(":gradle-plugin")
 include(":installer")
+include(":vida-doc-test")
 
 // ----- API / runtime modules (0.3.x) ----------------------------------------
 include(":bloque")
 include(":objeto")
 include(":susurro")
 include(":puertas")
+include(":escultores")
 
 // ----- Observability (0.4.x) -------------------------------------------
 include(":vigia")
@@ -57,11 +64,22 @@ include(":red")
 //   include(":bench")
 
 // ----- Mods (0.7.x) ---------------------------------------------------------
-include(":mods:saciedad")
-project(":mods:saciedad").projectDir = file("mods/saciedad")
+// Опциональные подпроекты: не ломаем конфигурацию, если каталог отсутствует (sparse checkout).
+val modsSaciedad = file("mods/saciedad")
+if (modsSaciedad.isDirectory) {
+    include(":mods:saciedad")
+    project(":mods:saciedad").projectDir = modsSaciedad
+}
 
-include(":mods:senda")
-project(":mods:senda").projectDir = file("mods/senda")
+val modsSenda = file("mods/senda")
+if (modsSenda.isDirectory) {
+    include(":mods:senda")
+    project(":mods:senda").projectDir = modsSenda
+}
 
-include(":mods:valenta")
-project(":mods:valenta").projectDir = file("mods/valenta")
+// ----- Skal Launcher (standalone Compose UI) ---------------------------------
+val skalLauncherDir = file("Skal Launcher")
+if (skalLauncherDir.isDirectory) {
+    include(":skal-launcher")
+    project(":skal-launcher").projectDir = skalLauncherDir
+}

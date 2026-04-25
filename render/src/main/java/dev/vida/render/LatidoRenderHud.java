@@ -38,7 +38,7 @@ import java.util.Objects;
  * @param deltaTick     дробный прогресс между двумя серверными тиками
  * @param pintor        абстракция рисования прямоугольников
  */
-@ApiStatus.Preview("render")
+@ApiStatus.Stable
 public record LatidoRenderHud(
         int anchoPantalla,
         int altoPantalla,

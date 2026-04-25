@@ -48,7 +48,9 @@ final class VersionJsonTest {
                 .anyMatch(s -> String.valueOf(s).equals("-Dvida.mods=${game_directory}/mods"))
                 .anyMatch(s -> String.valueOf(s).equals("-Dvida.config=${game_directory}/vida/config"))
                 .anyMatch(s -> String.valueOf(s).equals("-Dvida.loader.version=0.5.0"))
-                .anyMatch(s -> String.valueOf(s).equals("-Dvida.minecraft.version=1.21.1"));
+                .anyMatch(s -> String.valueOf(s).equals("-Dvida.minecraft.version=1.21.1"))
+                .anyMatch(s -> String.valueOf(s).equals("-Dvida.minecraftVersion=1.21.1"))
+                .anyMatch(s -> String.valueOf(s).equals("-Dvida.platformProfile=legacy-121/1.21.1"));
     }
 
     @Test

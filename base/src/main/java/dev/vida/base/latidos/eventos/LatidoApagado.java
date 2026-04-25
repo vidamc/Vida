@@ -17,7 +17,7 @@ import java.util.Objects;
  * @param momento    время, когда сигнал был инициирован
  * @param razon      текстовое описание причины выключения
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public record LatidoApagado(Instant momento, String razon) {
 
     public LatidoApagado {

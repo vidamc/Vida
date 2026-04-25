@@ -13,7 +13,7 @@ import dev.vida.core.ApiStatus;
  * <p>Экземпляр создаётся сгенерированным trampoline'ом внутри целевого
  * метода и не переиспользуется между инъекциями.
  */
-@ApiStatus.Preview("vifada")
+@ApiStatus.Stable
 public class CallbackInfo {
 
     private final String methodName;

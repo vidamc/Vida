@@ -71,7 +71,8 @@ final class ModrinthDbReaderTest {
                 "INSERT INTO profiles VALUES('pack-1','My Pack','1.21.1','fabric','0.16.0','-Xmx4G')"
         );
 
-        boolean ok = ModrinthDbReader.patchJavaArgs(tmp, "pack-1", "-javaagent:/path/loader.jar");
+        boolean ok = ModrinthDbReader.patchJavaArgs(tmp, "pack-1", "-javaagent:/path/loader.jar",
+                "1.21.1", "0.5.0");
         assertThat(ok).isTrue();
 
         List<InstanceRef> refs = ModrinthDbReader.listProfiles(tmp);
@@ -86,6 +87,7 @@ final class ModrinthDbReaderTest {
             String args = rs.getString("java_args");
             assertThat(args).contains("-Xmx4G");
             assertThat(args).contains("-javaagent:/path/loader.jar");
+            assertThat(args).contains("-Dvida.minecraftVersion=1.21.1");
         }
     }
 
@@ -96,7 +98,8 @@ final class ModrinthDbReaderTest {
                         + "'-Xmx4G -javaagent:/old/agent.jar -Dfoo=bar')"
         );
 
-        boolean ok = ModrinthDbReader.patchJavaArgs(tmp, "pack-1", "-javaagent:/new/loader.jar");
+        boolean ok = ModrinthDbReader.patchJavaArgs(tmp, "pack-1", "-javaagent:/new/loader.jar",
+                "1.21.1", "0.5.0");
         assertThat(ok).isTrue();
 
         Path db = tmp.resolve("app.db");
@@ -118,7 +121,8 @@ final class ModrinthDbReaderTest {
                 "INSERT INTO profiles VALUES('pack-1','P','1.21.1','fabric','0.16.0',NULL)"
         );
 
-        boolean ok = ModrinthDbReader.patchJavaArgs(tmp, "pack-1", "-javaagent:/path/loader.jar");
+        boolean ok = ModrinthDbReader.patchJavaArgs(tmp, "pack-1", "-javaagent:/path/loader.jar",
+                "1.21.1", "0.5.0");
         assertThat(ok).isTrue();
 
         Path db = tmp.resolve("app.db");
@@ -127,14 +131,16 @@ final class ModrinthDbReaderTest {
              var rs = conn.createStatement()
                      .executeQuery("SELECT java_args FROM profiles WHERE path='pack-1'")) {
             assertThat(rs.next()).isTrue();
-            assertThat(rs.getString("java_args")).isEqualTo("-javaagent:/path/loader.jar");
+            assertThat(rs.getString("java_args")).contains("-javaagent:/path/loader.jar")
+                    .contains("-Dvida.minecraftVersion=1.21.1");
         }
     }
 
     @Test
     void patch_returns_false_for_missing_profile() throws Exception {
         createDb();
-        boolean ok = ModrinthDbReader.patchJavaArgs(tmp, "nonexistent", "-javaagent:/x.jar");
+        boolean ok = ModrinthDbReader.patchJavaArgs(tmp, "nonexistent", "-javaagent:/x.jar",
+                "1.21.1", "0.5.0");
         assertThat(ok).isFalse();
     }
 
@@ -150,5 +156,67 @@ final class ModrinthDbReaderTest {
         assertThat(refs.getFirst().instancePath().toString())
                 .contains("profiles")
                 .contains("my-instance");
+    }
+
+    /**
+     * Схема как у Theseus ({@code modrinth/code}): {@code override_extra_launch_args}
+     * — JSON-массив строк, а не {@code java_args}.
+     */
+    @Test
+    void patches_override_extra_launch_args_json_array() throws Exception {
+        Path db = tmp.resolve("app.db");
+        String url = "jdbc:sqlite:" + db.toAbsolutePath();
+        try (Connection conn = DriverManager.getConnection(url);
+             Statement st = conn.createStatement()) {
+            st.execute("""
+                    CREATE TABLE profiles (
+                      path TEXT PRIMARY KEY,
+                      install_stage TEXT NOT NULL DEFAULT 'installed',
+                      name TEXT NOT NULL,
+                      icon_path TEXT,
+                      game_version TEXT NOT NULL,
+                      mod_loader TEXT NOT NULL DEFAULT 'fabric',
+                      mod_loader_version TEXT,
+                      groups TEXT NOT NULL DEFAULT '[]',
+                      linked_project_id TEXT,
+                      linked_version_id TEXT,
+                      locked INTEGER,
+                      created INTEGER NOT NULL DEFAULT 0,
+                      modified INTEGER NOT NULL DEFAULT 0,
+                      last_played INTEGER,
+                      submitted_time_played INTEGER NOT NULL DEFAULT 0,
+                      recent_time_played INTEGER NOT NULL DEFAULT 0,
+                      override_java_path TEXT,
+                      override_extra_launch_args TEXT NOT NULL DEFAULT '[]',
+                      override_custom_env_vars TEXT NOT NULL DEFAULT '[]',
+                      override_mc_memory_max INTEGER,
+                      override_mc_force_fullscreen INTEGER,
+                      override_mc_game_resolution_x INTEGER,
+                      override_mc_game_resolution_y INTEGER,
+                      override_hook_pre_launch TEXT,
+                      override_hook_wrapper TEXT,
+                      override_hook_post_exit TEXT
+                    )
+                    """);
+            st.execute(
+                    "INSERT INTO profiles(path,name,game_version,mod_loader,mod_loader_version,"
+                            + "override_extra_launch_args) "
+                            + "VALUES('pack-1','P','1.21.1','fabric','0.16.0','[\"-Xmx4G\"]')");
+        }
+
+        boolean ok = ModrinthDbReader.patchJavaArgs(tmp, "pack-1",
+                "-javaagent:C:/data/profiles/pack-1/vida/vida-loader-1.jar",
+                "1.21.1", "1.0.0");
+        assertThat(ok).isTrue();
+
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + db.toAbsolutePath());
+             var rs = conn.createStatement().executeQuery(
+                     "SELECT override_extra_launch_args FROM profiles WHERE path='pack-1'")) {
+            assertThat(rs.next()).isTrue();
+            String json = rs.getString(1);
+            assertThat(json).contains("-javaagent:C:/data/profiles/pack-1/vida/vida-loader-1.jar");
+            assertThat(json).contains("-Xmx4G");
+            assertThat(json).contains("-Dvida.minecraftVersion=1.21.1");
+        }
     }
 }

@@ -17,7 +17,7 @@ import dev.vida.core.ApiStatus;
  * вызывается там, шина игнорирует это и логирует предупреждение). Используется
  * для телеметрии/логирования, которые не должны влиять на поведение.
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public enum Prioridad {
     URGENTE(-200),
     ALTA(-100),

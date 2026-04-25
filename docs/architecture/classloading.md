@@ -75,6 +75,16 @@ public abstract class LevelMorph {
 
 Компилятор видит обычные поле и метод; байтовый референс `LevelMorph.tickCount` / `LevelMorph.tick()`. При трансформации Vifada встречает эти референсы в теле inject-методов и подменяет owner на `net.minecraft.world.level.Level` — значит, в рантайме мод *действительно* обращается к приватному полю/методу vanilla-класса. Всё это — в `JuegoLoader`, так что reflection-не-нужен, и нет cross-loader-барьера.
 
+## Профиль платформы, Cartografía и кеш трансформаций
+
+Опционально активируется **профиль платформы** (`profile.json`, см. [modules/platform-profiles.md](../modules/platform-profiles.md)). Он не меняет иерархию `ClassLoader`, но:
+
+- задаёт стратегию загрузки Proguard-маппингов (`GAME_DIR_PROGUARD` или `CLASSPATH_PROGUARD`) и журналируемый ярлык `mappingMode`;
+- задаёт состав **платформенных** морфов из jar загрузчика (`morphBundle`);
+- включает в ключ дискового кеша успешных трансформаций (`TransformBytecodeCache`) суффикс с id профиля, чтобы смена профиля не смешивала патчи в кеше.
+
+Разделение по-прежнему на уровне трансформации байткода внутри одного и того же `VidaClassTransformer`; изоляции лоадеров профиль не добавляет и не заменяет.
+
 ## `TransformingClassLoader` — альтернативный путь
 
 `VidaBoot.boot(options)` (без агента) создаёт `TransformingClassLoader` и делает его `JuegoLoader`-эквивалентом. Там тот же transformer, но dispatch происходит в `findClass(...)` вместо `ClassFileTransformer`. Это нужно для:
@@ -84,15 +94,15 @@ public abstract class LevelMorph {
 
 В обычном запуске игры `TransformingClassLoader` не создаётся — всё работает через `Instrumentation`.
 
-## Почему нет `ModuleLayer`
+## Почему нет `ModuleLayer` (пока)
 
 JPMS (`ModuleLayer`) — красивое решение на бумаге, но в 1.21.1 у нас:
 
 - Minecraft распространяется без `module-info.class` — автоматический модуль с именем, выведенным из JAR.
-- Многие библиотеки ECO-системы моддинга тоже без JPMS.
+- Многие библиотеки экосистемы моддинга тоже без JPMS.
 - Разные моды могут тащить пересекающиеся пакеты (`shadow`-плагин для Gradle), что при JPMS вызывает `LayerInstantiationException`.
 
-Поэтому в 0.x-релизах Vida остаётся на классической модели лоадеров, оставив JPMS как опцию для 1.x. Решение задокументировано, но не финальное — если сообщество модов массово перейдёт на модули, мы пересмотрим.
+**Формальное закрытие строки ТЗ:** изоляция «мод не видит классы соседа» достигается политикой **`JuegoLoader` / `ModLoader`** и тестом **`ModLoaderIsolationTest`** (класс из JAR другого мода не загружается через чужой `ModLoader`). Отдельный opt-in `ModuleLayer` для «песочничных» модов остаётся возможным расширением и отслеживается в [tz-compliance-matrix.md](../reference/tz-compliance-matrix.md), но не входит в минимальный контур 2.x без явного манифест-флага.
 
 ## Изоляция ресурсов
 

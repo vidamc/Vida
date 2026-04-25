@@ -26,7 +26,7 @@ import java.lang.annotation.Target;
  * entrypoint с наибольшим {@link #prioridad()}; при равных приоритетах —
  * по {@link String#compareTo лексикографическому} порядку FQN класса.
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface VidaEntrypoint {

@@ -17,6 +17,8 @@ class CoordenadaTest {
         assertThat(base.desplazar(1, -4, 2)).isEqualTo(new Coordenada(32, 60, -15));
         assertThat(base.chunkX()).isEqualTo(1);
         assertThat(base.chunkZ()).isEqualTo(-2);
+        assertThat(base.chunk()).isEqualTo(new ChunkCoordenada(1, -2));
+        assertThat(base.region()).isEqualTo(new RegionCoordenada(0, -1));
     }
 
     @Test

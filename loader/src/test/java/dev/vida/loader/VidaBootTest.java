@@ -7,6 +7,7 @@ package dev.vida.loader;
 import static org.assertj.core.api.Assertions.*;
 
 import dev.vida.base.LatidoGlobal;
+import dev.vida.base.ModulosInstaladosGlobal;
 import dev.vida.platform.VanillaBridge;
 import java.nio.file.Path;
 import org.junit.jupiter.api.AfterEach;
@@ -24,6 +25,7 @@ final class VidaBootTest {
     void reset() {
         VidaRuntime.resetForTests();
         LatidoGlobal.resetForTests();
+        ModulosInstaladosGlobal.resetForTests();
         VanillaBridge.resetForTests();
     }
 
@@ -31,6 +33,7 @@ final class VidaBootTest {
     void cleanup() {
         VidaRuntime.resetForTests();
         LatidoGlobal.resetForTests();
+        ModulosInstaladosGlobal.resetForTests();
         VanillaBridge.resetForTests();
     }
 
@@ -54,18 +57,20 @@ final class VidaBootTest {
         VidaEnvironment env = report.environment();
         assertThat(env.resolvedMods()).hasSize(1);
         assertThat(env.resolvedMods().get(0).id()).isEqualTo("demo");
-        // Мод-морф + два платформенных (MinecraftTickMorph, GuiRenderMorph),
-        // которые BootSequence регистрирует автоматически.
-        assertThat(env.morphs().totalMorphs()).isEqualTo(3);
+        // Мод-морф + платформенные (MinecraftTickMorph, ClientResourceReloadMorph, GuiRenderMorph,
+        // ServerTickMorph).
+        assertThat(env.morphs().totalMorphs()).isEqualTo(5);
         assertThat(env.morphs().forTarget("demo/Foo")).hasSize(1);
-        assertThat(env.morphs().forTarget("net/minecraft/client/Minecraft")).hasSize(1);
+        assertThat(env.morphs().forTarget("net/minecraft/client/Minecraft")).hasSize(2);
         assertThat(env.morphs().forTarget("net/minecraft/client/gui/Gui")).hasSize(1);
+        assertThat(env.morphs().forTarget("net/minecraft/server/MinecraftServer")).hasSize(1);
         assertThat(env.juegoLoader()).isNotNull();
         assertThat(env.modLoaders()).containsKey("demo");
         assertThat(env.transformer().index()).isSameAs(env.morphs());
         assertThat(env.fuenteDataDriven()).containsKey("demo");
         assertThat(env.fuenteDataDriven().get("demo").habilitado()).isFalse();
         assertThat(VidaRuntime.current()).isSameAs(env);
+        assertThat(ModulosInstaladosGlobal.vista()).isEqualTo(env.resolvedMods());
     }
 
     @Test
@@ -79,7 +84,7 @@ final class VidaBootTest {
         assertThat(report.isOk()).isTrue();
         assertThat(report.environment().resolvedMods()).isEmpty();
         // Платформенные морфы регистрируются всегда, даже без модов.
-        assertThat(report.environment().morphs().totalMorphs()).isEqualTo(2);
+        assertThat(report.environment().morphs().totalMorphs()).isEqualTo(4);
     }
 
     @Test

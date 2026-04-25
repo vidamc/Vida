@@ -14,7 +14,7 @@ import java.util.Set;
 /**
  * Иммутабельный snapshot texture-atlas.
  */
-@ApiStatus.Preview("render")
+@ApiStatus.Stable
 public final class TextureAtlas {
 
     private final Identifier texturaMissing;

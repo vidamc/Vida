@@ -14,7 +14,7 @@ import dev.vida.core.Result;
  * <p>Методы <b>thread-safe</b>: шина и базовый реализатор (`DefaultCatalogo`)
  * гарантируют атомарность регистрации.
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public interface CatalogoMutable<T> extends Catalogo<T> {
 
     /**

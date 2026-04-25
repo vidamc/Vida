@@ -1,0 +1,16 @@
+{
+  "profileId": "legacy-121/1.21.7",
+  "gameVersion": "1.21.7",
+  "generation": "LEGACY_121",
+  "mappings": {
+    "strategy": "GAME_DIR_PROGUARD"
+  },
+  "mappingMode": "OBF_MOJMAP_PROGUARD",
+  "platformBridge": "dev.vida.platform.VanillaBridge",
+  "morphBundle": [
+    "dev.vida.platform.MinecraftTickMorph",
+    "dev.vida.platform.GuiRenderMorph"
+  ],
+  "minimumJavaVersion": 21,
+  "recommendedJavaVersion": 21
+}

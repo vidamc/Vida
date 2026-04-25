@@ -6,11 +6,16 @@ package dev.vida.vifada.internal;
 
 import dev.vida.core.ApiStatus;
 import dev.vida.vifada.InjectionPoint;
+import dev.vida.vifada.MorphMethodResolution;
 import dev.vida.vifada.VifadaError;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -36,10 +41,9 @@ import org.objectweb.asm.tree.VarInsnNode;
  * <p>В текущей версии поддерживается:
  * <ul>
  *   <li>{@code @VifadaOverwrite} — замена тела метода;</li>
- *   <li>{@code @VifadaInject} в точках {@link InjectionPoint#HEAD} и
- *       {@link InjectionPoint#RETURN} для методов с возвратом {@code void}
- *       и не-{@code void}; cancel поддерживается только для {@link
- *       InjectionPoint#HEAD}.</li>
+ *   <li>{@code @VifadaInject} / {@code @VifadaMulti} — HEAD/RETURN;</li>
+ *   <li>{@code @VifadaRedirect} — замена совпадающего {@link MethodInsnNode};
+ *       {@code @VifadaLocal} на параметрах инъектора — только HEAD.</li>
  * </ul>
  *
  * <p>Операции мутируют переданный {@code target} ClassNode.
@@ -54,7 +58,16 @@ public final class MorphApplier {
      *         продолжает работу максимально далеко, чтобы собрать как можно
      *         больше диагностики.
      */
-    public static List<VifadaError> apply(ClassNode target, List<MorphDescriptor> morphs) {
+    /**
+     * @param morphTargetClassInternal ключ Mojmap (как в {@code @VifadaMorph#target}),
+     *                                  если байткод класса обфусцирован и {@code target.name}
+     *                                  не совпадает с этим ключом; иначе {@code null}
+     */
+    public static List<VifadaError> apply(
+            ClassNode target,
+            List<MorphDescriptor> morphs,
+            String morphTargetClassInternal,
+            MorphMethodResolution methodResolution) {
         List<VifadaError> errors = new ArrayList<>();
 
         // Упорядочим морфы по priority, стабилизируем по morphInternal для детерминизма.
@@ -62,12 +75,19 @@ public final class MorphApplier {
         ordered.sort(Comparator.<MorphDescriptor>comparingInt(d -> d.priority)
                 .thenComparing(d -> d.morphInternal));
 
+        detectInjectConflicts(target, morphTargetClassInternal, ordered, errors);
+
+        Map<String, MethodNode> methodResolutionCache = new HashMap<>();
+
         Set<String> usedHelperNames = collectMethodKeys(target);
         int helperCounter = 0;
 
         for (MorphDescriptor morph : ordered) {
             // ---- Sanity: морф должен таргетить именно этот класс. ---------
-            if (!morph.targetInternal.equals(target.name)) {
+            String expectedClass = morphTargetClassInternal != null
+                    ? morphTargetClassInternal
+                    : target.name;
+            if (!morph.targetInternal.equals(expectedClass)) {
                 errors.add(new VifadaError.WrongTarget(
                         morph.morphInternal, morph.targetInternal, target.name));
                 continue;
@@ -85,7 +105,9 @@ public final class MorphApplier {
 
             // ---- @VifadaOverwrite -----------------------------------------
             for (OverwriteDescriptor ow : morph.overwrites) {
-                MethodNode targetMethod = findMethod(target, ow.targetName(), ow.targetDescriptor());
+                MethodNode targetMethod = findMethod(
+                        target, ow.targetName(), ow.targetDescriptor(), methodResolution,
+                        methodResolutionCache);
                 if (targetMethod == null) {
                     if (!ow.silentMissing()) {
                         errors.add(new VifadaError.TargetMethodNotFound(
@@ -96,9 +118,54 @@ public final class MorphApplier {
                 replaceBody(target, targetMethod, ow.method(), morph.morphInternal);
             }
 
+            // ---- @VifadaRedirect ------------------------------------------
+            for (RedirectDescriptor rd : morph.redirects) {
+                MethodNode container = findMethod(target, rd.containerName(),
+                        rd.containerDescriptor(), methodResolution, methodResolutionCache);
+                if (container == null) {
+                    if (rd.requireTarget()) {
+                        errors.add(new VifadaError.TargetMethodNotFound(
+                                morph.morphInternal, target.name, rd.containerMethodSpec()));
+                    }
+                    continue;
+                }
+                MethodInsnNode invoke = findInvokeSite(container,
+                        rd.invokeOwner(), rd.invokeName(), rd.invokeDescriptor(), rd.ordinal());
+                if (invoke == null) {
+                    if (rd.requireTarget()) {
+                        errors.add(new VifadaError.BadMorph(morph.morphInternal,
+                                "redirect: no invocation " + rd.invokeOwner() + "." + rd.invokeName()
+                                        + rd.invokeDescriptor() + " in " + rd.containerMethodSpec()));
+                    }
+                    continue;
+                }
+                VifadaError redErr = validateRedirectMorph(morph.morphInternal, invoke, rd.morphMethod());
+                if (redErr != null) {
+                    errors.add(redErr);
+                    continue;
+                }
+                String helperName = uniqueHelperName(usedHelperNames,
+                        "vida$redirect$" + sanitize(rd.containerName()) + "$" + (helperCounter++));
+                MethodNode helper = copyMethodRemapped(rd.morphMethod(), morph.morphInternal, target.name);
+                helper.name = helperName;
+                helper.access = Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC;
+                target.methods.add(helper);
+                usedHelperNames.add(helper.name + helper.desc);
+
+                InsnList rep = new InsnList();
+                rep.add(new MethodInsnNode(Opcodes.INVOKESTATIC, target.name, helper.name,
+                        helper.desc, false));
+                container.instructions.insertBefore(invoke, rep);
+                container.instructions.remove(invoke);
+                bumpStackForInjection(container,
+                        Type.getArgumentTypes(invoke.desc).length + 2);
+            }
+
             // ---- @VifadaInject --------------------------------------------
             for (InjectDescriptor in : morph.injects) {
-                MethodNode targetMethod = findMethod(target, in.targetName(), in.targetDescriptor());
+                MethodNode targetMethod = findMethod(
+                        target, in.targetName(), in.targetDescriptor(), methodResolution,
+                        methodResolutionCache);
                 if (targetMethod == null) {
                     if (in.requireTarget()) {
                         errors.add(new VifadaError.TargetMethodNotFound(
@@ -115,6 +182,19 @@ public final class MorphApplier {
                     continue;
                 }
 
+                if (!in.localBindings().isEmpty() && in.at() != InjectionPoint.HEAD) {
+                    errors.add(new VifadaError.BadMorph(morph.morphInternal,
+                            "@VifadaLocal is only supported at InjectionPoint.HEAD"));
+                    continue;
+                }
+                if (!in.localBindings().isEmpty()) {
+                    VifadaError locErr = validateLocalBindings(morph.morphInternal, targetMethod, in);
+                    if (locErr != null) {
+                        errors.add(locErr);
+                        continue;
+                    }
+                }
+
                 // Генерируем helper-метод в целевом классе.
                 String helperName = uniqueHelperName(usedHelperNames,
                         "vida$inject$" + sanitize(in.targetName()) + "$" + (helperCounter++));
@@ -123,11 +203,109 @@ public final class MorphApplier {
                 usedHelperNames.add(helper.name + helper.desc);
 
                 // Вставляем вызов helper'а в нужные места.
-                insertInjectCall(target.name, targetMethod, helper, in.at());
+                insertInjectCall(target.name, targetMethod, helper, in);
             }
         }
 
         return errors;
+    }
+
+    private static void detectInjectConflicts(
+            ClassNode target,
+            String morphTargetClassInternal,
+            List<MorphDescriptor> ordered,
+            List<VifadaError> errors) {
+        String matchKey = morphTargetClassInternal != null ? morphTargetClassInternal : target.name;
+        Map<String, List<MorphDescriptor>> bySlot = new LinkedHashMap<>();
+        for (MorphDescriptor morph : ordered) {
+            if (!morph.targetInternal.equals(matchKey)) {
+                continue;
+            }
+            for (InjectDescriptor in : morph.injects) {
+                String key = in.targetMethod() + "|" + in.at();
+                bySlot.computeIfAbsent(key, k -> new ArrayList<>()).add(morph);
+            }
+        }
+        String cls = matchKey.replace('/', '.');
+        for (var e : bySlot.entrySet()) {
+            List<MorphDescriptor> ms = e.getValue();
+            Set<String> distinct = new LinkedHashSet<>();
+            for (MorphDescriptor m : ms) {
+                distinct.add(m.morphInternal);
+            }
+            if (distinct.size() <= 1) {
+                continue;
+            }
+            int p0 = ms.get(0).priority;
+            boolean samePri = ms.stream().allMatch(m -> m.priority == p0);
+            if (!samePri) {
+                continue;
+            }
+            List<String> names = new ArrayList<>(distinct);
+            errors.add(new VifadaError.MorphConflict(
+                    cls,
+                    e.getKey(),
+                    names.get(0).replace('/', '.'),
+                    names.get(1).replace('/', '.'),
+                    p0,
+                    "use distinct @VifadaMorph.priority values (lower applies first)"));
+        }
+    }
+
+    private static VifadaError validateLocalBindings(
+            String morphInternal, MethodNode targetMethod, InjectDescriptor in) {
+        for (VifadaLocalBinding b : in.localBindings()) {
+            int slot = LocalSlotResolver.resolveHeadSlot(targetMethod, b);
+            if (slot < 0) {
+                return new VifadaError.BadMorph(morphInternal,
+                        "@VifadaLocal: no matching LVT entry for parameter index "
+                                + b.parameterIndex() + " ordinal=" + b.ordinal());
+            }
+        }
+        return null;
+    }
+
+    private static MethodInsnNode findInvokeSite(
+            MethodNode container,
+            String owner,
+            String name,
+            String desc,
+            int ordinal) {
+        int seen = 0;
+        for (AbstractInsnNode ins = container.instructions.getFirst();
+             ins != null;
+             ins = ins.getNext()) {
+            if (!(ins instanceof MethodInsnNode mi)) {
+                continue;
+            }
+            if (!owner.equals(mi.owner) || !name.equals(mi.name) || !desc.equals(mi.desc)) {
+                continue;
+            }
+            if (seen++ == ordinal) {
+                return mi;
+            }
+        }
+        return null;
+    }
+
+    private static VifadaError validateRedirectMorph(
+            String morphInternal, MethodInsnNode invoke, MethodNode morphMethod) {
+        int op = invoke.getOpcode();
+        if (op != Opcodes.INVOKESTATIC) {
+            return new VifadaError.BadMorph(morphInternal,
+                    "@VifadaRedirect currently supports only INVOKESTATIC call-sites");
+        }
+        if ((morphMethod.access & Opcodes.ACC_STATIC) == 0) {
+            return new VifadaError.BadMorph(morphInternal,
+                    "redirect morph method must be static for INVOKESTATIC targets");
+        }
+        if (!invoke.desc.equals(morphMethod.desc)) {
+            return new VifadaError.SignatureMismatch(morphInternal,
+                    morphMethod.name + morphMethod.desc,
+                    "descriptor " + invoke.desc,
+                    morphMethod.desc);
+        }
+        return null;
     }
 
     // ===================================================================
@@ -202,7 +380,7 @@ public final class MorphApplier {
     }
 
     private static void insertInjectCall(String targetOwner, MethodNode targetMethod,
-                                         MethodNode helper, InjectionPoint at) {
+                                         MethodNode helper, InjectDescriptor in) {
         boolean targetStatic = (targetMethod.access & Opcodes.ACC_STATIC) != 0;
         boolean helperStatic = (helper.access & Opcodes.ACC_STATIC) != 0;
         Type targetType = Type.getMethodType(targetMethod.desc);
@@ -211,11 +389,11 @@ public final class MorphApplier {
         int ciSlot = targetMethod.maxLocals;
         targetMethod.maxLocals = ciSlot + 1;
 
-        if (at == InjectionPoint.HEAD) {
+        if (in.at() == InjectionPoint.HEAD) {
             InsnList pre = buildHeadInjection(targetOwner, targetMethod, helper,
-                    targetStatic, helperStatic, targetArgs, ciSlot, targetType.getReturnType());
+                    targetStatic, helperStatic, targetArgs, ciSlot, targetType.getReturnType(), in);
             targetMethod.instructions.insert(pre);
-        } else { // RETURN
+        } else {
             InsnList pre = buildInitCi(targetMethod, ciSlot);
             targetMethod.instructions.insert(pre);
 
@@ -224,8 +402,8 @@ public final class MorphApplier {
             while (cur != null) {
                 AbstractInsnNode next = cur.getNext();
                 if (isReturnInsn(cur)) {
-                    InsnList callHook = buildReturnInjection(targetOwner, helper,
-                            targetStatic, helperStatic, targetArgs, ciSlot);
+                    InsnList callHook = buildReturnInjection(targetOwner, targetMethod, helper,
+                            targetStatic, helperStatic, targetArgs, ciSlot, in);
                     instructions.insertBefore(cur, callHook);
                 }
                 cur = next;
@@ -251,13 +429,13 @@ public final class MorphApplier {
                                                MethodNode helper,
                                                boolean targetStatic, boolean helperStatic,
                                                Type[] targetArgs, int ciSlot,
-                                               Type returnType) {
+                                               Type returnType, InjectDescriptor in) {
         InsnList il = buildInitCi(targetMethod, ciSlot);
 
         if (!helperStatic) {
             il.add(new VarInsnNode(Opcodes.ALOAD, 0));
         }
-        pushTargetArgs(il, targetStatic, targetArgs);
+        pushInjectArgs(il, targetMethod, targetStatic, targetArgs, in);
         il.add(new VarInsnNode(Opcodes.ALOAD, ciSlot));
 
         int opcode = helperStatic ? Opcodes.INVOKESTATIC : Opcodes.INVOKEVIRTUAL;
@@ -274,26 +452,59 @@ public final class MorphApplier {
         return il;
     }
 
-    private static InsnList buildReturnInjection(String targetOwner, MethodNode helper,
+    private static InsnList buildReturnInjection(String targetOwner, MethodNode targetMethod,
+                                                 MethodNode helper,
                                                  boolean targetStatic, boolean helperStatic,
-                                                 Type[] targetArgs, int ciSlot) {
+                                                 Type[] targetArgs, int ciSlot,
+                                                 InjectDescriptor in) {
         InsnList il = new InsnList();
         if (!helperStatic) {
             il.add(new VarInsnNode(Opcodes.ALOAD, 0));
         }
-        pushTargetArgs(il, targetStatic, targetArgs);
+        pushInjectArgs(il, targetMethod, targetStatic, targetArgs, in);
         il.add(new VarInsnNode(Opcodes.ALOAD, ciSlot));
         int opcode = helperStatic ? Opcodes.INVOKESTATIC : Opcodes.INVOKEVIRTUAL;
         il.add(new MethodInsnNode(opcode, targetOwner, helper.name, helper.desc, false));
         return il;
     }
 
-    private static void pushTargetArgs(InsnList il, boolean targetStatic, Type[] targetArgs) {
-        int slot = targetStatic ? 0 : 1;
-        for (Type t : targetArgs) {
+    /**
+     * @param targetMethod required for HEAD local bindings; may be {@code null} for RETURN path
+     *                     when bindings are empty
+     */
+    private static void pushInjectArgs(
+            InsnList il,
+            MethodNode targetMethod,
+            boolean targetStatic,
+            Type[] targetArgs,
+            InjectDescriptor in) {
+        for (int i = 0; i < targetArgs.length; i++) {
+            Type t = targetArgs[i];
+            int slot = slotForInjectArg(targetMethod, targetStatic, targetArgs, i, in);
             il.add(new VarInsnNode(t.getOpcode(Opcodes.ILOAD), slot));
-            slot += t.getSize();
         }
+    }
+
+    private static int slotForInjectArg(
+            MethodNode targetMethod,
+            boolean targetStatic,
+            Type[] targetArgs,
+            int paramIndex,
+            InjectDescriptor in) {
+        for (VifadaLocalBinding b : in.localBindings()) {
+            if (b.parameterIndex() == paramIndex) {
+                return LocalSlotResolver.resolveHeadSlot(targetMethod, b);
+            }
+        }
+        return defaultArgSlot(targetStatic, targetArgs, paramIndex);
+    }
+
+    private static int defaultArgSlot(boolean targetStatic, Type[] targetArgs, int paramIndex) {
+        int slot = targetStatic ? 0 : 1;
+        for (int j = 0; j < paramIndex; j++) {
+            slot += targetArgs[j].getSize();
+        }
+        return slot;
     }
 
     private static void appendDefaultReturn(InsnList il, Type retType) {
@@ -388,7 +599,37 @@ public final class MorphApplier {
     //                             HELPERS
     // ===================================================================
 
-    private static MethodNode findMethod(ClassNode cn, String name, String desc) {
+    private static MethodNode findMethod(
+            ClassNode cn,
+            String name,
+            String desc,
+            MorphMethodResolution resolution,
+            Map<String, MethodNode> cache) {
+        String k = name + '\0' + desc;
+        MethodNode hit = cache.get(k);
+        if (hit != null) {
+            return hit;
+        }
+        MethodNode direct = findMethodExact(cn, name, desc);
+        if (direct != null) {
+            cache.put(k, direct);
+            return direct;
+        }
+        if (resolution == null) {
+            return null;
+        }
+        String[] obf = resolution.resolveObfMethod(cn.name, name, desc);
+        if (obf == null || obf.length != 2) {
+            return null;
+        }
+        MethodNode via = findMethodExact(cn, obf[0], obf[1]);
+        if (via != null) {
+            cache.put(k, via);
+        }
+        return via;
+    }
+
+    private static MethodNode findMethodExact(ClassNode cn, String name, String desc) {
         if (cn.methods == null) return null;
         for (MethodNode m : cn.methods) {
             if (m.name.equals(name) && m.desc.equals(desc)) return m;
@@ -409,6 +650,11 @@ public final class MorphApplier {
             if (m.name.equals(sh.name()) && m.desc.equals(sh.descriptor())) return true;
         }
         return false;
+    }
+
+    /** Обратная совместимость: без Mojmap-ключа и без резолва методов. */
+    public static List<VifadaError> apply(ClassNode target, List<MorphDescriptor> morphs) {
+        return apply(target, morphs, null, null);
     }
 
     private static Set<String> collectMethodKeys(ClassNode cn) {

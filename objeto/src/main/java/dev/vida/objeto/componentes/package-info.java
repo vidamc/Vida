@@ -16,7 +16,7 @@
  * {@link dev.vida.objeto.componentes.MapaComponentes} — иммутабельная
  * type-safe карта, заменяющая vanilla {@code DataComponentMap}.
  */
-@ApiStatus.Preview("objeto")
+@ApiStatus.Stable
 package dev.vida.objeto.componentes;
 
 import dev.vida.core.ApiStatus;

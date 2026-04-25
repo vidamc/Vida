@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
  * и в виде индекса по {@code claseInternal} для быстрого отбора перед
  * применением.
  */
-@ApiStatus.Preview("puertas")
+@ApiStatus.Stable
 public final class PuertaArchivo {
 
     private final String nombreOrigen;

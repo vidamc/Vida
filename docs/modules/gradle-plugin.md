@@ -4,7 +4,7 @@ Gradle-плагин `dev.vida.mod`. Инструмент сборки мода V
 
 - Пакет: `dev.vida.gradle`
 - Plugin ID: `dev.vida.mod`
-- Стабильность: `@ApiStatus.Preview`
+- Стабильность: **`@ApiStatus.Stable`** (публичные пакеты `dev.vida.gradle`; см. [api-stability.md](../reference/api-stability.md))
 
 ## Установка
 
@@ -67,6 +67,8 @@ vida {
 
 Прогоняет сгенерированный (или написанный руками) `vida.mod.json` через `ManifestParser`. При ошибке — `BUILD FAILED` с человекочитаемой диагностикой.
 
+Если в манифесте включён **`custom["vida:dataDriven"].enabled = true`**, задача дополнительно проверяет, что каталог **`datapackRoot`** (или дефолт `data/<mod-id>/vida`) **существует** под корнем ресурсов модуля (обычно `src/main/resources`), через [`FuenteManifestoDatapackValidador`](./fuente.md). Иначе сборка падает с сообщением `vida:dataDriven validation failed: …`.
+
 Зависимость: `jar` задача зависит от `vidaValidateManifest`, так что валидный манифест — прекондиция любой сборки.
 
 ### `vidaRemapJar`
@@ -114,6 +116,10 @@ vida {
 jvmArgs.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005")
 ```
 
+#### Hot reload (dev, 2.0)
+
+В блоке `vida.run { }` включите **`hotReload.set(true)`**. Задача передаст JVM `-Dvida.dev.hotReload=true` и `-Dvida.dev.hotReload.watch=…` (каталог скомпилированных классов мода); загрузчик может сбросить каталоги через `CatalogoManejador` при изменении файлов. Только для разработки — см. [guides/hot-reload.md](../guides/hot-reload.md).
+
 ## Интеграция с сборкой
 
 Плагин автоматически:
@@ -159,7 +165,7 @@ includeBuild("../Vida") {
 ## Планы
 
 - `vidaTestRun` — лёгкий test-runner для мода без полного запуска Minecraft.
-- `vidaDocTest` — проверка, что примеры в Javadoc мода компилируются.
+- Корневая задача **`./gradlew vidaDocTest`** — компиляция fenced-примеров из `docs/` ([session-roadmap.md](../session-roadmap.md)).
 - Publishing DSL — удобная публикация в Modrinth / CurseForge / собственный maven.
 
 ## Что читать дальше

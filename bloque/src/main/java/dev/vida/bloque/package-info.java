@@ -16,7 +16,7 @@
  * {@link dev.vida.bloque.registro.RegistroBloques}, который строится
  * поверх общего {@link dev.vida.base.catalogo.CatalogoManejador}.
  */
-@ApiStatus.Preview("bloque")
+@ApiStatus.Stable
 package dev.vida.bloque;
 
 import dev.vida.core.ApiStatus;

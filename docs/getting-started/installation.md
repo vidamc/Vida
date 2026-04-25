@@ -126,10 +126,10 @@ java -jar vida-installer.jar --headless --launcher curseforge --dir "/path/to/Cu
 
 ### Проверка `.ptr` без установки *(0.3.0+)*
 
-Для модов с Puertas (в т.ч. [Saciedad](https://github.com/vidamc/Vida) в репо):
+Для модов с Puertas укажите путь к файлу `.ptr` (или к каталогу, где лежат `.ptr`):
 
 ```bash
-java -jar vida-installer.jar --validate-puertas ./mods/saciedad/saciedad.ptr
+java -jar vida-installer.jar --validate-puertas ./mods/mi-mod/mi-mod.ptr
 ```
 
 Полный справочник CLI — [reference/cli-installer.md](../reference/cli-installer.md).
@@ -145,4 +145,9 @@ java -jar vida-installer.jar --validate-puertas ./mods/saciedad/saciedad.ptr
 
 - Общие ошибки — [troubleshooting.md](../troubleshooting.md).
 - Проблема не описана — [issue](https://github.com/vidamc/Vida/issues/new/choose) с логом и `java -version`.
+
+## Дальнейшее чтение
+
+- [Полный каталог документации](../index.md) — все страницы `docs/` одним списком.
+- Для разработки модов — [dev-environment.md](./dev-environment.md), [first-mod.md](./first-mod.md), [guides/modder-toolkit.md](../guides/modder-toolkit.md).
 

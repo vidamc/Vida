@@ -5,6 +5,7 @@
 package dev.vida.installer.launchers.atlauncher;
 
 import dev.vida.installer.mc.JsonTree;
+import dev.vida.installer.mc.VidaInstallerJvm;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -52,9 +53,12 @@ public final class ATLauncherJsonPatcher {
     /**
      * Патчит файл на диске. Атомарный rename через {@code .tmp}.
      */
-    public static Result patch(Path instanceJson, String agentJarAbsPath) throws IOException {
+    public static Result patch(Path instanceJson, String agentJarAbsPath,
+                               String minecraftVersion, String loaderVersion) throws IOException {
         Objects.requireNonNull(instanceJson, "instanceJson");
         Objects.requireNonNull(agentJarAbsPath, "agentJarAbsPath");
+        Objects.requireNonNull(minecraftVersion, "minecraftVersion");
+        Objects.requireNonNull(loaderVersion, "loaderVersion");
 
         if (agentJarAbsPath.indexOf(' ') >= 0) {
             throw new IOException(
@@ -72,12 +76,14 @@ public final class ATLauncherJsonPatcher {
                 ((Map<String, Object>) root).computeIfAbsent("launcher", k -> new LinkedHashMap<>());
 
         String prev = objectToStringOrNull(launcher.get("javaArguments"));
+        String stripped = VidaInstallerJvm.stripManagedInstallerJvmTokens(
+                prev != null ? prev : "");
         String newArg = "-javaagent:" + agentJarAbsPath;
         StringBuilder merged = new StringBuilder();
         boolean alreadyAgent = false;
 
-        if (prev != null && !prev.isBlank()) {
-            for (String tok : prev.split(" ")) {
+        if (!stripped.isBlank()) {
+            for (String tok : stripped.split(" ")) {
                 if (tok.isBlank()) continue;
                 if (tok.contains(AGENT_MARKER) || tok.startsWith("-javaagent:")
                         && tok.contains("vida-loader")) {
@@ -91,6 +97,8 @@ public final class ATLauncherJsonPatcher {
         }
         if (merged.length() > 0) merged.append(' ');
         merged.append(newArg);
+        merged.append(' ');
+        merged.append(VidaInstallerJvm.spaceSeparatedInstallerJvmProps(minecraftVersion, loaderVersion));
 
         launcher.put("javaArguments", merged.toString());
 

@@ -14,7 +14,7 @@ import dev.vida.core.ApiStatus;
  * Vida на новый мажор Minecraft: пропущенный компонент виден как
  * compile-error, а не как silently-missing-field.
  */
-@ApiStatus.Preview("objeto")
+@ApiStatus.Stable
 public sealed interface Componente permits
         Componente.DatosModeloPersonalizados,
         Componente.Irrompible,

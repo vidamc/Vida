@@ -21,6 +21,7 @@ description = "Vida Gradle plugin for mod authors: manifest generation, remappin
 dependencies {
     implementation(project(":core"))
     implementation(project(":manifest"))
+    implementation(project(":fuente"))
     implementation(project(":cartografia"))
     implementation(project(":puertas"))
     implementation(libs.asm)

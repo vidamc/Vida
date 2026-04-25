@@ -19,7 +19,7 @@ import java.lang.annotation.Target;
  * переадресуются на целевой класс, а сам shadow-член в итоговом классе
  * не появляется.
  */
-@ApiStatus.Preview("vifada")
+@ApiStatus.Stable
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.FIELD, ElementType.METHOD})
 public @interface VifadaShadow {

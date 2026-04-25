@@ -27,7 +27,7 @@ import dev.vida.core.ApiStatus;
  * <p>Enum намеренно «плоский» — если потребуется комбинация свойств, её
  * задают флагами в {@link PropiedadesBloque}.
  */
-@ApiStatus.Preview("bloque")
+@ApiStatus.Stable
 public enum MaterialBloque {
 
     /** Воздух / empty-блок. Не рендерится, не коллидирует. */

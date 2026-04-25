@@ -10,7 +10,7 @@ import java.util.Objects;
 /**
  * Типизированные ошибки сетевого канала Vida.
  */
-@ApiStatus.Preview("red")
+@ApiStatus.Stable
 public sealed interface TejidoError {
 
     record TipoNoRegistrado(String tipoCanonical, DireccionPaquete direccion) implements TejidoError {
@@ -32,6 +32,12 @@ public sealed interface TejidoError {
         public PayloadInvalido {
             Objects.requireNonNull(tipoCanonical, "tipoCanonical");
             Objects.requireNonNull(detalle, "detalle");
+        }
+    }
+
+    record CargaDemasiadoGrande(String tipoCanonical, int bytes, int maxPermitidos) implements TejidoError {
+        public CargaDemasiadoGrande {
+            Objects.requireNonNull(tipoCanonical, "tipoCanonical");
         }
     }
 }

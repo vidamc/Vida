@@ -82,6 +82,24 @@ public sealed interface ResolverError {
     }
 
     /**
+     * Политика доступа ({@link ResolverOptions#accessDeniedIds()}) запрещает любой
+     * провайдер с данным {@code id}, либо корневой мод из списка roots объявлен запрещённым.
+     *
+     * @param id          целевой id зависимости или корневого мода
+     * @param requesters  цепочка требований (как у {@link Missing}); для запрещённого корня —
+     *                    один элемент {@link dev.vida.resolver.internal.Backtracker#ROOT_REQUESTER}
+     * @param detail      человекочитаемое пояснение
+     */
+    record AccessPolicyDenied(String id, List<String> requesters, String detail)
+            implements ResolverError {
+        public AccessPolicyDenied {
+            Objects.requireNonNull(id, "id");
+            requesters = List.copyOf(Objects.requireNonNull(requesters, "requesters"));
+            Objects.requireNonNull(detail, "detail");
+        }
+    }
+
+    /**
      * Id попал в {@link ResolverOptions#excludes()}, но какой-то требующий
      * его провайдер помечает зависимость как REQUIRED.
      */

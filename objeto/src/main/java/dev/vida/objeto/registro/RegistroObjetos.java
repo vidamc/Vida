@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * обёртка над {@link CatalogoManejador}, типизированная по {@link Objeto}.
  * Дополнительно ведёт список тегов.
  */
-@ApiStatus.Preview("objeto")
+@ApiStatus.Stable
 public final class RegistroObjetos {
 
     /** id общего реестра предметов Vida. */

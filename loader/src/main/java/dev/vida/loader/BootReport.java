@@ -17,7 +17,7 @@ import java.util.Optional;
  * список {@link LoaderError} и общую длительность. {@link #isOk()} —
  * true, только если окружение создано и ошибок нет.
  */
-@ApiStatus.Preview("loader")
+@ApiStatus.Stable
 public record BootReport(VidaEnvironment environment,
                          List<LoaderError> errors,
                          Duration duration) {

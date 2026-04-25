@@ -81,6 +81,14 @@ final class CliArgsTest {
     }
 
     @Test
+    void unsupported_minecraft_version_rejected() {
+        assertThatThrownBy(() ->
+                CliArgs.parse(new String[]{"--minecraft", "1.20.4"}, DEFAULT_DETECTOR, "x"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported Minecraft version");
+    }
+
+    @Test
     void missing_arg_rejected() {
         assertThatThrownBy(() ->
                 CliArgs.parse(new String[]{"--dir"}, DEFAULT_DETECTOR, "x"))

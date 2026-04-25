@@ -24,7 +24,7 @@ import java.util.Objects;
  *
  * @param <E> тип значения события
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public final class Latido<E> {
 
     private final Identifier id;

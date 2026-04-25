@@ -25,7 +25,7 @@
  * в порядке поступления (FIFO); внутри пула workers ≤ CPU-count по
  * умолчанию. Back-pressure — через {@link dev.vida.susurro.Susurro.Politica}.
  */
-@ApiStatus.Preview("susurro")
+@ApiStatus.Stable
 package dev.vida.susurro;
 
 import dev.vida.core.ApiStatus;

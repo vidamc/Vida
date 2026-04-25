@@ -24,8 +24,8 @@ final class PrismInstanceLayoutTest {
                 .isEqualTo("dev.vida.loader.json");
         assertThat(l.loaderJar().getFileName().toString())
                 .isEqualTo("loader-0.1.0.jar");
-        assertThat(l.modsDir().endsWith(".minecraft/mods")
-                || l.modsDir().endsWith(".minecraft\\mods")).isTrue();
+        assertThat(l.modsDir().endsWith("minecraft/mods")
+                || l.modsDir().endsWith("minecraft\\mods")).isTrue();
     }
 
     @Test

@@ -21,7 +21,7 @@ import java.util.Objects;
  * <p>Отчёт — самодостаточный HTML с inline-CSS, flame-chart на CSS-барах,
  * top-20 методов и breakdown по Susurro.
  */
-@ApiStatus.Preview("vigia")
+@ApiStatus.Stable
 public final class VigiaReporte {
 
     private static final DateTimeFormatter TS_FMT =

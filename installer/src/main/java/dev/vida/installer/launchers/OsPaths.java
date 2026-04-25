@@ -6,7 +6,11 @@ package dev.vida.installer.launchers;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * Унифицированное определение путей для разных лаунчеров.
@@ -176,14 +180,56 @@ public final class OsPaths {
         };
     }
 
-    // ----------------------------------------------------------- CurseForge (Phase B)
+    // ----------------------------------------------------------- CurseForge
 
-    /** Стандартная modding-folder CurseForge App (instances). */
+    /**
+     * Типичные корни {@code .../minecraft}, внутри которых лежит {@code Instances/}
+     * (Overwolf CurseForge App). Порядок — от более специфичных к общим.
+     */
+    public List<Path> curseForgeMinecraftBases() {
+        List<Path> raw = new ArrayList<>(4);
+        switch (family) {
+            case WINDOWS -> {
+                if (!nullOrBlank(localAppData)) {
+                    raw.add(Paths.get(localAppData, "curseforge", "minecraft"));
+                }
+                raw.add(Paths.get(userHome, "curseforge", "minecraft"));
+                raw.add(Paths.get(userHome, "Documents", "curseforge", "minecraft"));
+            }
+            case MACOS -> raw.add(Paths.get(userHome, "Documents", "curseforge", "minecraft"));
+            case LINUX -> {
+                raw.add(xdgDataOr(Paths.get(userHome, ".local", "share"), "curseforge")
+                        .resolve("minecraft"));
+                raw.add(Paths.get(userHome, "Documents", "curseforge", "minecraft"));
+            }
+        }
+        Set<Path> uniq = new LinkedHashSet<>();
+        for (Path p : raw) {
+            uniq.add(p.toAbsolutePath().normalize());
+        }
+        return List.copyOf(uniq);
+    }
+
+    /** Первый типичный кандидат (совместимость с вызовами «один путь»). */
     public Path curseforgeInstances() {
+        List<Path> c = curseForgeMinecraftBases();
+        return c.isEmpty() ? Paths.get(userHome, "curseforge", "minecraft") : c.get(0);
+    }
+
+    // ----------------------------------------------------------- MultiMC
+
+    /**
+     * Стандартные data-dir MultiMC (не portable). Portable-установку пользователь
+     * всё равно указывает вручную через {@code --dir}.
+     */
+    public List<Path> multiMcDataDirCandidates() {
         return switch (family) {
-            case WINDOWS -> Paths.get(userHome, "curseforge", "minecraft");
-            case MACOS   -> Paths.get(userHome, "Documents", "curseforge", "minecraft");
-            case LINUX   -> Paths.get(userHome, "Documents", "curseforge", "minecraft");
+            case WINDOWS -> List.of(
+                    Paths.get(nullOrBlank(appData) ? userHome : appData, "MultiMC"));
+            case MACOS -> List.of(Paths.get(userHome, "Library", "Application Support", "MultiMC"));
+            case LINUX -> List.of(
+                    xdgDataOr(Paths.get(userHome, ".local", "share"), "multimc"),
+                    Paths.get(userHome, ".multimc"));
         };
     }
 

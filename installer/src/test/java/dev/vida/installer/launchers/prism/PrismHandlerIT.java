@@ -43,7 +43,7 @@ final class PrismHandlerIT {
         assertThat(inst.resolve("mmc-pack.json")).exists();
         assertThat(inst.resolve("patches/dev.vida.loader.json")).exists();
         assertThat(inst.resolve("libraries/loader-0.1.0.jar")).exists();
-        assertThat(inst.resolve(".minecraft/mods")).isDirectory();
+        assertThat(inst.resolve("minecraft/mods")).isDirectory();
         assertThat(inst.resolve("vida/install.json")).exists();
 
         String patchJson = Files.readString(inst.resolve("patches/dev.vida.loader.json"),

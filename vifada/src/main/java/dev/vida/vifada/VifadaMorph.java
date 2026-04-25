@@ -22,7 +22,7 @@ import java.lang.annotation.Target;
  * описание, а не рабочий класс. Его методы после разбора копируются в
  * целевой класс с переадресацией ссылок.
  */
-@ApiStatus.Preview("vifada")
+@ApiStatus.Stable
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.TYPE)
 public @interface VifadaMorph {

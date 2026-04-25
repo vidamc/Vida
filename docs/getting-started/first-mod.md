@@ -11,6 +11,8 @@
 
 ## 1. Создаём проект
 
+Готовый минимальный Gradle-проект с BOM и одним классом `VidaMod` — в [`templates/starter-mod`](../../templates/starter-mod/README.md) (копируйте каталог и переименуйте id/пакет).
+
 ```bash
 mkdir miaventura && cd miaventura
 gradle init --type java-application --java-version 21 \
@@ -50,7 +52,7 @@ public final class MiAventura implements VidaMod {
 
 ## 3. Манифест
 
-Плагин генерирует `vida.mod.json` из DSL — вам ничего писать руками не нужно. Убедитесь, что в `build.gradle.kts` прописано:
+Плагин генерирует `vida.mod.json` из DSL — вам ничего писать руками не нужно. По умолчанию в манифест подставляется зависимость на платформу `vida` (см. `injectDefaultVidaDependency` в [modder-toolkit](../guides/modder-toolkit.md)); при необходимости переопределите диапазон или отключите автоподстановку. Убедитесь, что в `build.gradle.kts` прописано:
 
 ```kotlin
 vida {

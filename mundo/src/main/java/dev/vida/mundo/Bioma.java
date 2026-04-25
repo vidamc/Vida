@@ -9,9 +9,13 @@ import dev.vida.core.Identifier;
 import java.util.Objects;
 
 /**
- * Value-type биома.
+ * Value-type биома (идентификатор + климатические подсказки).
+ *
+ * <p>{@code temperatura} и {@code humedad} следуют духу генератора Minecraft: температура влияет на
+ * лёд / снег, влажность ограничена {@code [0..1]}. Конкретные диапазоны vanilla-биомов отличаются;
+ * при переносе из игры используйте значения моста, а не «магические» константы в моде.
  */
-@ApiStatus.Preview("mundo")
+@ApiStatus.Stable
 public record Bioma(
         Identifier id,
         float temperatura,

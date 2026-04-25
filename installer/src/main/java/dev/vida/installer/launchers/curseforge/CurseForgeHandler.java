@@ -56,11 +56,14 @@ public final class CurseForgeHandler implements LauncherHandler {
     @Override
     public List<Path> detectDataDirs() {
         OsPaths os = OsPaths.system();
-        Path candidate = os.curseforgeInstances();
-        if (candidate != null && Files.isDirectory(candidate)) {
-            return List.of(candidate);
+        List<Path> out = new ArrayList<>();
+        for (Path base : os.curseForgeMinecraftBases()) {
+            Path instances = base.resolve("Instances");
+            if (Files.isDirectory(instances)) {
+                out.add(base);
+            }
         }
-        return List.of();
+        return List.copyOf(out);
     }
 
     @Override
@@ -131,7 +134,8 @@ public final class CurseForgeHandler implements LauncherHandler {
         progress.accept("Patching " + instanceJson);
         if (!opt.dryRun()) {
             CurseForgeJsonPatcher.Result r =
-                    CurseForgeJsonPatcher.patch(instanceJson, loaderJar.toString());
+                    CurseForgeJsonPatcher.patch(instanceJson, loaderJar.toString(),
+                            opt.minecraftVersion(), opt.loaderVersion());
             installed.add(instanceJson);
             if (r.alreadyAgent()) {
                 progress.accept("  replaced existing Vida agent path.");

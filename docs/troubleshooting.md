@@ -104,7 +104,15 @@ Vida не ставит палки в колёса профайлерам. Пер
 java -agentpath:/path/to/libyjpagent.so -javaagent:vida-loader.jar ...
 ```
 
-Встроенный `Vigia` — [в планах](./roadmap.md).
+Встроенный профайлер **`Vigia`** (`/vida profile`, JFR, HTML-отчёты) — см. [modules/vigia.md](./modules/vigia.md).
+
+### Ошибка загрузки при `vida:dataDriven` / Fuente
+
+Если bootstrap падает с ошибкой data-driven парсера:
+
+1. Убедитесь, что в JAR есть все JSON, на которые ссылаются **loot** (вложенные `minecraft:loot_table`) или **worldgen** (ключи `loot_table`, блоки через `block` / `blocks` / `Name`+`Properties`) в namespace вашего мода — см. [modules/fuente.md](./modules/fuente.md).
+2. Проверьте, что каталог `datapackRoot` существует в resources при сборке (`vidaValidateManifest`).
+3. Включите `-Dvida.log.level=DEBUG` и найдите сообщение о конкретном `FuenteError`.
 
 ### Как сохранить байты патченных классов
 

@@ -37,7 +37,7 @@ import dev.vida.core.ApiStatus;
  * }
  * }</pre>
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public interface VidaMod {
 
     /**

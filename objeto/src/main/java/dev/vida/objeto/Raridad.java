@@ -13,7 +13,7 @@ import dev.vida.core.ApiStatus;
  * тип, потому что не хочет тянуть прямую зависимость от Minecraft-классов
  * в side-agnostic модулях. Интеграция с клиентом — в будущем {@code vida-render}.
  */
-@ApiStatus.Preview("objeto")
+@ApiStatus.Stable
 public enum Raridad {
     /** Белое имя, обычный предмет. */
     COMUN(0xFFFFFF),

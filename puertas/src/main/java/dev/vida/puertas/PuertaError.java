@@ -10,7 +10,7 @@ import java.util.Objects;
 /**
  * Структурированные ошибки парсера и аппликатора пуэртас.
  */
-@ApiStatus.Preview("puertas")
+@ApiStatus.Stable
 public sealed interface PuertaError {
 
     /** Где именно произошла ошибка — для удобных сообщений. */

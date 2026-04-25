@@ -44,7 +44,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *   reg.registrar(piedraOscura, EtiquetaBloque.de("vida", "mineable/pico"));
  * }</pre>
  */
-@ApiStatus.Preview("bloque")
+@ApiStatus.Stable
 public final class RegistroBloques {
 
     /** ID общего Catalogo блоков Vida. */

@@ -23,7 +23,7 @@ import java.util.function.Supplier;
  *
  * @param <C> тип контекста BlockEntity
  */
-@ApiStatus.Preview("bloque")
+@ApiStatus.Stable
 public class BloqueEntidad<C extends ContextoBloqueEntidad> extends Bloque {
 
     private final Supplier<C> fabrica;

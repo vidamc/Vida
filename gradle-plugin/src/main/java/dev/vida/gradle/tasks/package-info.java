@@ -8,4 +8,7 @@
  *
  * <p>Все задачи попадают в группу {@code vida}.
  */
+@ApiStatus.Stable
 package dev.vida.gradle.tasks;
+
+import dev.vida.core.ApiStatus;

@@ -30,6 +30,12 @@ class LatidosMundoTest {
 
         assertThat(recibido.get()).isEqualTo("vida:test");
         assertThat(LatidosMundo.Tick.TIPO.id().toString()).isEqualTo("vida:mundo_tick");
+        assertThat(LatidosMundo.ChunkDescargado.TIPO.id().toString()).isEqualTo("vida:chunk_descargado");
+
+        AtomicReference<int[]> chunkDesc = new AtomicReference<>();
+        bus.suscribir(LatidosMundo.ChunkDescargado.TIPO, ev -> chunkDesc.set(new int[] {ev.chunkX(), ev.chunkZ()}));
+        bus.emitir(LatidosMundo.ChunkDescargado.TIPO, new LatidosMundo.ChunkDescargado(MUNDO, -2, 7));
+        assertThat(chunkDesc.get()).containsExactly(-2, 7);
     }
 
     @Test

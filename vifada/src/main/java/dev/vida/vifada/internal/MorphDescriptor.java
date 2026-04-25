@@ -27,6 +27,7 @@ public final class MorphDescriptor {
     public final List<InjectDescriptor> injects = new ArrayList<>();
     public final List<OverwriteDescriptor> overwrites = new ArrayList<>();
     public final List<ShadowDescriptor> shadows = new ArrayList<>();
+    public final List<RedirectDescriptor> redirects = new ArrayList<>();
 
     public MorphDescriptor(String morphInternal, String targetInternal,
                            int priority, ClassNode morphNode) {
@@ -37,7 +38,7 @@ public final class MorphDescriptor {
     }
 
     public boolean isEmpty() {
-        return injects.isEmpty() && overwrites.isEmpty();
+        return injects.isEmpty() && overwrites.isEmpty() && redirects.isEmpty();
     }
 
     @Override
@@ -45,6 +46,7 @@ public final class MorphDescriptor {
         return "MorphDescriptor[" + morphInternal + " → " + targetInternal
                 + ", injects=" + injects.size()
                 + ", overwrites=" + overwrites.size()
+                + ", redirects=" + redirects.size()
                 + ", shadows=" + shadows.size() + "]";
     }
 }

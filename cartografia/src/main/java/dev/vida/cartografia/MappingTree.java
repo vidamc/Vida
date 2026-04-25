@@ -14,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Иммутабельное дерево мэппингов — основной тип Cartografía.
@@ -43,25 +44,51 @@ public final class MappingTree {
     private final Namespace[] namespaces;
     private final List<ClassMapping> classes;
 
-    /** Карта {@code ns → (classNameInNs → ClassMapping)} для O(1) поиска. */
-    private final Map<Namespace, Map<String, ClassMapping>> byNamespace;
+    /** Индекс source namespace (0) — всегда строится в конструкторе. */
+    private final Map<String, ClassMapping> bySourceName;
+
+    /**
+     * Индексы для namespace с индексом ≥ 1 строятся лениво при первом
+     * {@link #classByName(Namespace, String)} — типичный lookup идёт по
+     * source, вторичные namespace нужны реже.
+     */
+    private final ConcurrentHashMap<Namespace, Map<String, ClassMapping>> lazyByNamespace;
 
     private MappingTree(Namespace[] namespaces, List<ClassMapping> classes) {
         this.namespaces = namespaces;
         this.classes = List.copyOf(classes);
+        this.lazyByNamespace = new ConcurrentHashMap<>(Math.max(0, namespaces.length - 1));
 
-        Map<Namespace, Map<String, ClassMapping>> by = new LinkedHashMap<>(namespaces.length * 2);
-        for (int i = 0; i < namespaces.length; i++) {
-            Map<String, ClassMapping> m = new HashMap<>(this.classes.size() * 2);
-            for (ClassMapping c : this.classes) {
-                String name = c.name(i);
-                if (name != null && !name.isEmpty()) {
-                    m.put(name, c);
-                }
+        Map<String, ClassMapping> src = new HashMap<>(this.classes.size() * 2);
+        for (ClassMapping c : this.classes) {
+            String name = c.name(0);
+            if (name != null && !name.isEmpty()) {
+                src.put(name, c);
             }
-            by.put(namespaces[i], Collections.unmodifiableMap(m));
         }
-        this.byNamespace = Collections.unmodifiableMap(by);
+        this.bySourceName = Collections.unmodifiableMap(src);
+    }
+
+    private Map<String, ClassMapping> indexFor(Namespace ns) {
+        if (ns.equals(namespaces[0])) {
+            return bySourceName;
+        }
+        return lazyByNamespace.computeIfAbsent(ns, this::buildIndexForNamespace);
+    }
+
+    private Map<String, ClassMapping> buildIndexForNamespace(Namespace ns) {
+        int idx = indexOf(ns);
+        if (idx < 0) {
+            return Map.of();
+        }
+        Map<String, ClassMapping> m = new HashMap<>(classes.size() * 2);
+        for (ClassMapping c : classes) {
+            String name = c.name(idx);
+            if (name != null && !name.isEmpty()) {
+                m.put(name, c);
+            }
+        }
+        return Collections.unmodifiableMap(m);
     }
 
     // =============================================================== factory
@@ -108,7 +135,7 @@ public final class MappingTree {
 
     /** Класс по его имени в source namespace. */
     public ClassMapping classBySource(String internalName) {
-        return byNamespace.get(source()).get(Objects.requireNonNull(internalName, "internalName"));
+        return bySourceName.get(Objects.requireNonNull(internalName, "internalName"));
     }
 
     /**
@@ -120,8 +147,8 @@ public final class MappingTree {
     public ClassMapping classByName(Namespace ns, String internalName) {
         Objects.requireNonNull(ns, "ns");
         Objects.requireNonNull(internalName, "internalName");
-        Map<String, ClassMapping> m = byNamespace.get(ns);
-        return m == null ? null : m.get(internalName);
+        Map<String, ClassMapping> m = indexFor(ns);
+        return m.get(internalName);
     }
 
     // =========================================================== remapping
@@ -157,7 +184,7 @@ public final class MappingTree {
                     break;
                 }
                 String cls = descriptor.substring(i + 1, end);
-                ClassMapping cm = byNamespace.get(from).get(cls);
+                ClassMapping cm = indexFor(from).get(cls);
                 String replaced = (cm != null) ? cm.name(toIdx) : cls;
                 out.append('L').append(replaced == null ? cls : replaced).append(';');
                 i = end + 1;

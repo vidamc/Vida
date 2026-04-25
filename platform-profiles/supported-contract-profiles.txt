@@ -1,0 +1,5 @@
+# One profile id per line (legacy-121/<version> or calendar-26/...).
+# Used by contract tests and bundled under META-INF/vida/ in the loader jar.
+legacy-121/1.21.1
+legacy-121/1.21.7
+calendar-26/26.1.preview

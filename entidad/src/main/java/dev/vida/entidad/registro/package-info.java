@@ -6,7 +6,7 @@
 /**
  * Регистрация сущностей в {@link dev.vida.base.catalogo.CatalogoManejador}.
  */
-@ApiStatus.Preview("entidad")
+@ApiStatus.Stable
 package dev.vida.entidad.registro;
 
 import dev.vida.core.ApiStatus;

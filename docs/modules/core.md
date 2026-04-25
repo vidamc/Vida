@@ -75,8 +75,8 @@ log.warn("jar {} без манифеста — пропускаем", path);
 Аннотации-маркеры стабильности публичного API:
 
 ```java
-@ApiStatus.Stable          // зафиксировано до следующей мажорной версии
-@ApiStatus.Preview("base") // может измениться до 1.0.0
+@ApiStatus.Stable          // зафиксировано до следующей мажорной версии (для модулей 1.0 — см. api-stability.md)
+@ApiStatus.Preview("loader") // пример: рантайм загрузчика ещё в preview
 @ApiStatus.Internal        // не использовать извне
 ```
 

@@ -14,7 +14,7 @@ import dev.vida.core.ApiStatus;
  * по {@link Ajuste#validador()}; при невалидном значении используется
  * {@link Ajuste#defecto()}.
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public interface AjustesTipados {
 
     /** Читает значение с применением валидации. Никогда не бросает. */

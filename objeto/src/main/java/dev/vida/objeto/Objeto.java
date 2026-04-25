@@ -15,7 +15,7 @@ import java.util.Objects;
  * mutable state и никак не завязан на конкретный side. Для предметов,
  * представляющих блок, используйте {@link ObjetoDeBloque}.
  */
-@ApiStatus.Preview("objeto")
+@ApiStatus.Stable
 public class Objeto {
 
     private final Identifier id;

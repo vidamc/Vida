@@ -14,7 +14,7 @@ import dev.vida.core.ApiStatus;
  * {@link #CONSUMIBLE} — еда и напитки. {@link #ARMADURA} — броня. Всё
  * остальное — {@link #GENERICO}.
  */
-@ApiStatus.Preview("objeto")
+@ApiStatus.Stable
 public enum TipoObjeto {
     GENERICO,
     BLOQUE,

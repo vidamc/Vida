@@ -66,6 +66,15 @@ final class VidaPluginTest {
     }
 
     @Test
+    void infer_platform_profile_from_semantic_121_and_calendar_26() {
+        assertThat(VidaPlugin.inferPlatformProfileFromGameVersion("1.21.11"))
+                .isEqualTo("legacy-121/1.21.11");
+        assertThat(VidaPlugin.inferPlatformProfileFromGameVersion("26.1.0"))
+                .isEqualTo("calendar-26/26.1.0");
+        assertThat(VidaPlugin.inferPlatformProfileFromGameVersion("23.45")).isNull();
+    }
+
+    @Test
     void dsl_captures_configuration() {
         Project p = mkProject();
         p.getPluginManager().apply(VidaPlugin.PLUGIN_ID);

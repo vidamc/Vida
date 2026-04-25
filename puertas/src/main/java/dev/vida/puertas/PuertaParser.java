@@ -26,7 +26,7 @@ import java.util.Optional;
  * чтобы выдать все проблемы сразу, но сам результат всё равно валиден
  * только если {@code errores.isEmpty()}.
  */
-@ApiStatus.Preview("puertas")
+@ApiStatus.Stable
 public final class PuertaParser {
 
     private static final int VERSION_MAX_SOPORTADA = 1;

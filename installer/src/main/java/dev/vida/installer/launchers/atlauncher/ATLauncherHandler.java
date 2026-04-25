@@ -148,7 +148,8 @@ public final class ATLauncherHandler implements LauncherHandler {
         progress.accept("Patching " + instanceJson);
         if (!opt.dryRun()) {
             ATLauncherJsonPatcher.Result r = ATLauncherJsonPatcher.patch(
-                    instanceJson, loaderJar.toString());
+                    instanceJson, loaderJar.toString(),
+                    opt.minecraftVersion(), opt.loaderVersion());
             installed.add(instanceJson);
             if (r.alreadyAgent()) {
                 progress.accept("  replaced existing Vida agent path.");

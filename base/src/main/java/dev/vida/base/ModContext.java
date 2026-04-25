@@ -30,7 +30,7 @@ import java.nio.file.Path;
  * намеренное решение: мод должен взаимодействовать с другими модами
  * только через публичный API (события и реестры).
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public interface ModContext {
 
     /** Идентификатор мода ({@code vida.mod.json:id}). */

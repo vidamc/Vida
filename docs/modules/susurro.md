@@ -4,7 +4,7 @@
 
 - Пакет: `dev.vida.susurro`
 - Gradle: `dev.vida:vida-susurro`
-- Стабильность: `@ApiStatus.Preview("susurro")`
+- Стабильность: **`@ApiStatus.Stable`** с 1.0.0
 
 Зачем собственный пул, а не `ForkJoinPool.commonPool()`:
 
@@ -45,13 +45,17 @@ API:
 
 ### `Susurro.Politica`
 
-Иммутабельный record с тремя параметрами:
+Иммутабельный record:
 
 | Поле | Смысл | Дефолт |
 |------|-------|--------|
-| `workers` | размер пула | `max(2, ceil(cpu/2))` |
-| `maxCola` | max размер очереди; при превышении `lanzar` возвращает заведомо сфейленную `Tarea` | `1024` |
+| `workers` | размер пула | `max(2, ceil(cpu/2))` через `Politica.porDefecto()` |
+| `maxCola` | max размер очереди | `1024` |
 | `maxPorEtiqueta` | max одновременных задач с одним тегом; `0` = без лимита | `0` |
+| `estrategiaColaLlena` | поведение при переполнении общей очереди: `RECHAZAR` или выполнение в потоке вызывающего (`EJECUTOR_LLAMANTE`) | `RECHAZAR` |
+| `apagadoEsperaMsMax` | верхняя граница ожидания завершения задач при `detener()` / `close()` | `30000` |
+
+Трёхаргументный конструктор `Politica(workers, maxCola, maxPorEtiqueta)` сохранён для совместимости и эквивалентен вызову с `estrategiaColaLlena = RECHAZAR` и `apagadoEsperaMsMax = 30_000`.
 
 ```java
 Susurro sus = Susurro.iniciar(new Susurro.Politica(4, 256, 8));

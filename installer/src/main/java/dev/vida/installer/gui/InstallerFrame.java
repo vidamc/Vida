@@ -5,6 +5,7 @@
 package dev.vida.installer.gui;
 
 import dev.vida.installer.InstallOptions;
+import dev.vida.installer.MinecraftVersionChoices;
 import dev.vida.installer.InstallReport;
 import dev.vida.installer.InstallerCore;
 import dev.vida.installer.JavaRuntimeCheck;
@@ -67,7 +68,7 @@ public final class InstallerFrame extends JFrame {
     private final String loaderVersion;
     private final JComboBox<LauncherKind> launcherBox;
     private final JTextField dirField;
-    private final JTextField mcField;
+    private final JComboBox<String> mcCombo;
     private final JTextField instanceNameField;
     private final JComboBox<InstanceItem> instanceBox;
     private final JButton refreshInstancesBtn;
@@ -118,12 +119,17 @@ public final class InstallerFrame extends JFrame {
         browse.addActionListener(e -> browseForDir());
         form.add(browse, c);
 
-        // Minecraft version
+        // Minecraft version (editable combo: 1.21.x … 26.1.x)
         c.gridx = 0; c.gridy = 2;
         form.add(new JLabel("Minecraft version:"), c);
         c.gridx = 1; c.weightx = 1; c.fill = GridBagConstraints.HORIZONTAL;
-        mcField = new JTextField("1.21.1", 10);
-        form.add(mcField, c);
+        mcCombo = new JComboBox<>(MinecraftVersionChoices.defaultComboItems());
+        mcCombo.setEditable(true);
+        mcCombo.setSelectedItem("1.21.1");
+        ((JTextField) mcCombo.getEditor().getEditorComponent()).setColumns(14);
+        mcCombo.setToolTipText(
+                "1.21.1–1.21.x or 26.1.0–26.1.2 / 26.1.preview — matches platform profiles.");
+        form.add(mcCombo, c);
 
         // Instance name (Prism/MultiMC)
         c.gridx = 0; c.gridy = 3; c.weightx = 0; c.fill = GridBagConstraints.NONE;
@@ -284,6 +290,11 @@ public final class InstallerFrame extends JFrame {
 
     private static String safeMc(String v) { return v == null || v.isEmpty() ? "?" : v; }
 
+    private String minecraftVersionFromUi() {
+        JTextField tf = (JTextField) mcCombo.getEditor().getEditorComponent();
+        return tf.getText().trim();
+    }
+
     private void browseForDir() {
         JFileChooser fc = new JFileChooser(new File(dirField.getText()));
         fc.setDialogTitle("Choose install directory");
@@ -321,7 +332,7 @@ public final class InstallerFrame extends JFrame {
                     .installDir(Path.of(dirField.getText().trim()))
                     .targetInstance(targetInstance)
                     .instanceName(instanceName)
-                    .minecraftVersion(mcField.getText().trim())
+                    .minecraftVersion(minecraftVersionFromUi())
                     .loaderVersion(loaderVersion)
                     .createLauncherProfile(launcherProfileBox.isSelected())
                     .createLaunchScript(launchScriptBox.isSelected())

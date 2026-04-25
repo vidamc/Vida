@@ -33,13 +33,16 @@ final class CurseForgeJsonPatcherTest {
         data.put("gameVersion", "1.21.1");
         Path js = writeInstance(data);
 
-        CurseForgeJsonPatcher.Result r = CurseForgeJsonPatcher.patch(js, "/path/to/loader.jar");
+        CurseForgeJsonPatcher.Result r = CurseForgeJsonPatcher.patch(js, "/path/to/loader.jar",
+                "1.21.1", "0.5.0");
 
         assertThat(r.alreadyAgent()).isFalse();
         assertThat(r.previousArgs()).isNull();
 
         String patched = Files.readString(js, StandardCharsets.UTF_8);
         assertThat(patched).contains("-javaagent:/path/to/loader.jar");
+        assertThat(patched).contains("-Dvida.minecraftVersion=1.21.1");
+        assertThat(patched).contains("-Dvida.platformProfile=legacy-121/1.21.1");
     }
 
     @Test
@@ -49,7 +52,8 @@ final class CurseForgeJsonPatcherTest {
         data.put("javaArgsOverride", "-Xmx4G -Xms2G");
         Path js = writeInstance(data);
 
-        CurseForgeJsonPatcher.Result r = CurseForgeJsonPatcher.patch(js, "/path/loader.jar");
+        CurseForgeJsonPatcher.Result r = CurseForgeJsonPatcher.patch(js, "/path/loader.jar",
+                "1.21.1", "0.5.0");
 
         assertThat(r.alreadyAgent()).isFalse();
         assertThat(r.previousArgs()).isEqualTo("-Xmx4G -Xms2G");
@@ -65,7 +69,8 @@ final class CurseForgeJsonPatcherTest {
         data.put("javaArgsOverride", "-Xmx4G -javaagent:/old/agent.jar -Dfoo=bar");
         Path js = writeInstance(data);
 
-        CurseForgeJsonPatcher.Result r = CurseForgeJsonPatcher.patch(js, "/new/loader.jar");
+        CurseForgeJsonPatcher.Result r = CurseForgeJsonPatcher.patch(js, "/new/loader.jar",
+                "1.21.1", "0.5.0");
 
         assertThat(r.alreadyAgent()).isTrue();
 
@@ -83,7 +88,8 @@ final class CurseForgeJsonPatcherTest {
         data.put("javaArgsOverride", "");
         Path js = writeInstance(data);
 
-        CurseForgeJsonPatcher.Result r = CurseForgeJsonPatcher.patch(js, "/p/loader.jar");
+        CurseForgeJsonPatcher.Result r = CurseForgeJsonPatcher.patch(js, "/p/loader.jar",
+                "1.21.1", "0.5.0");
         assertThat(r.alreadyAgent()).isFalse();
 
         String patched = Files.readString(js, StandardCharsets.UTF_8);

@@ -16,7 +16,7 @@ import dev.vida.core.ApiStatus;
  *                   «пре-игровых» тиков загрузчика)
  * @param profundidad 0 — корневой серверный тик; 1+ — вложенные (subtick)
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public record LatidoPulso(long tickActual, String mundo, int profundidad) {
 
     public LatidoPulso {

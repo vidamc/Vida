@@ -19,7 +19,7 @@ import java.util.Objects;
  * <p>Применяется и из {@code :loader} (при бутстрапе), и в unit-тестах
  * моддеров, которые хотят собрать контекст вручную, не поднимая всю Vida.
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public final class DefaultModContext implements ModContext {
 
     private final ModMetadata metadata;

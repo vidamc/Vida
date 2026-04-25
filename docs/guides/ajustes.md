@@ -154,9 +154,7 @@ if (r.isErr()) {
 
 ## Перезагрузка
 
-В 0.x — только при рестарте Vida.
-
-Для горячей перезагрузки планируется `LatidoConfiguracionRecargada`:
+После успешного бутстрапа Vida эмитит **`LatidoConfiguracionRecargada`** (тип `dev.vida.base.latidos.eventos.LatidoConfiguracionRecargada`) при перезагрузке ресурсов клиента, в т.ч. пути F3+T (см. платформенный мост загрузчика). Подписка — как на любой `Latido`:
 
 ```java
 ctx.latidos().suscribir(LatidoConfiguracionRecargada.TIPO, Prioridad.NORMAL, evento -> {
@@ -165,7 +163,7 @@ ctx.latidos().suscribir(LatidoConfiguracionRecargada.TIPO, Prioridad.NORMAL, eve
 });
 ```
 
-Триггер — F3+T или команда `/vida reloadconfig`.
+Команда `/vida reloadconfig` (если включена в сборке) должна использовать тот же контракт через `LatidoGlobal` / мост, без дублирования логики в каждом моде.
 
 ## Синхронизация клиент↔сервер
 
@@ -180,7 +178,7 @@ public static final Ajuste<Integer> TICK_RATE =
 
 При `sincronizar()` сервер шлёт клиенту снимок этих значений; клиент локально переопределяет свой файл на время сессии. После дисконнекта — возврат к своим настройкам.
 
-API `sincronizar()` — preview; финальный контракт см. в `dev.vida.base.ajustes.AjustesSincronizados`.
+Поле wire для серверного снимка — `PaqueteAjustesSincronizacionServidor` в `dev.vida.red` (только объявленные пути `Ajuste`). Каталог путей регистрируется через `AjustesSincronizacionCatalogo`.
 
 ## Частые ошибки
 

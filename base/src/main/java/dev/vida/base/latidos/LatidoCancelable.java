@@ -19,7 +19,7 @@ import dev.vida.core.ApiStatus;
  * <p>Реализации обязаны быть <b>thread-safe</b>: флаг обычно хранится в
  * {@code volatile}-поле или {@code AtomicBoolean}.
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public interface LatidoCancelable {
 
     /** {@code true}, если событие уже было отменено одним из подписчиков. */

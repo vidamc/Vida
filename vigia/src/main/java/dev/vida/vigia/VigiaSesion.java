@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import jdk.jfr.Configuration;
+import jdk.jfr.FlightRecorder;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedFrame;
@@ -48,7 +49,7 @@ import jdk.jfr.consumer.RecordingFile;
  * String html = VigiaReporte.renderizar(res);
  * }</pre>
  */
-@ApiStatus.Preview("vigia")
+@ApiStatus.Stable
 public final class VigiaSesion {
 
     private static final Log LOG = Log.of(VigiaSesion.class);
@@ -72,6 +73,11 @@ public final class VigiaSesion {
      * @throws IllegalStateException si JFR no está disponible
      */
     public static VigiaSesion iniciar() {
+        if (!FlightRecorder.isAvailable()) {
+            throw new IllegalStateException(
+                    "JDK Flight Recorder no está disponible en esta JVM (use un JDK completo "
+                            + "y compruebe que JFR no esté desactivado por políticas de seguridad)");
+        }
         try {
             Configuration config = Configuration.getConfiguration("profile");
             Recording rec = new Recording(config);

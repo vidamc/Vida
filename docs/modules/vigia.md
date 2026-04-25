@@ -4,7 +4,7 @@
 
 - Пакет: `dev.vida.vigia`
 - Gradle: `dev.vida:vida-vigia`
-- Стабильность: `@ApiStatus.Preview("vigia")`
+- Стабильность: **`@ApiStatus.Stable`** (основной публичный API: `VigiaSesion`, `Resumen`, `VigiaReporte`, `VigiaComando`)
 
 ## Зачем
 
@@ -124,4 +124,4 @@ String response = cmd.ejecutar(new String[]{"start"}, susurro);
 
 - [modules/susurro.md](./susurro.md) — Susurro thread-pool.
 - [modules/base.md](./base.md) — система событий Latidos.
-- [modules/base-ejecutor.md](./base-ejecutor.md) — Ejecutor и reflection-биндер.
+- [modules/base-ejecutor.md](./base-ejecutor.md) — Ejecutor и `LatidoRegistrador`.

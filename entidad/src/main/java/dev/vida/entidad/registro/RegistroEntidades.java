@@ -21,7 +21,7 @@ import java.util.Optional;
 /**
  * Регистр entity-type'ов.
  */
-@ApiStatus.Preview("entidad")
+@ApiStatus.Stable
 public final class RegistroEntidades {
 
     public static final Identifier CATALOGO_ID = Identifier.of("vida", "entidad");

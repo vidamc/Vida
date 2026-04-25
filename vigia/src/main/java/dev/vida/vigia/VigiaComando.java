@@ -26,7 +26,7 @@ import java.util.Objects;
  *   <li>{@code dump} — создаёт снапшот текущей сессии без остановки.</li>
  * </ul>
  */
-@ApiStatus.Preview("vigia")
+@ApiStatus.Stable
 public final class VigiaComando {
 
     private static final Log LOG = Log.of(VigiaComando.class);

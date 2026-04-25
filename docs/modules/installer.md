@@ -4,7 +4,7 @@
 
 - Пакет: `dev.vida.installer`
 - Gradle: `dev.vida:vida-installer`
-- Стабильность: `@ApiStatus.Preview`
+- Стабильность: `@ApiStatus.Preview("installer")` — см. [api-stability.md](../reference/api-stability.md) (переход в `@Stable` — отдельный релизный критерий)
 
 Руководство для игрока — [getting-started/installation.md](../getting-started/installation.md). Список CLI-флагов — [reference/cli-installer.md](../reference/cli-installer.md). Пользовательская логика по лаунчерам — [guides/multi-launcher.md](../guides/multi-launcher.md).
 
@@ -163,13 +163,15 @@ Static-утилиты, общие для хэндлеров:
 
 Инсталлятор поставляет `-javaagent` и артефакты загрузчика; сценарий установки не менялся между этими минорами, но **появились новые возможности платформы**, с которыми стоит знакомить пользователей из документации, а не из fat-jar:
 
-| Версия Vida | Что важно для автора/игрока (не в installer.jar, в runtime) |
-|-------------|-----------------------------------------------------------|
-| **0.5.0** | `vida-entidad`, `vida-mundo`, `@OyenteDeTick` — моды с сущностями/миром. |
-| **0.6.0** | `vida-render`, `vida-red`, data-driven прототип, превью `@VifadaMulti` / `@VifadaLocal`. |
-| **0.7.0** | Публичные моды `Saciedad`, `Senda` (пример `mods/` в репо). |
-| **0.8.0** | Синтетические провайдеры `vida` / `minecraft` / `java` в резолвере; платформенные морфы `LatidoPulso` / `LatidoRenderHud`; версии через `BootOptions` / premain. |
-| **0.9.0** | Мод **Valenta** (рендер, опционально) — `docs/mods/valenta/`. |
+
+| Версия Vida | Что важно для автора/игрока (не в installer.jar, в runtime)                                                                                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **0.5.0**   | `vida-entidad`, `vida-mundo`, `@OyenteDeTick` — моды с сущностями/миром.                                                                                         |
+| **0.6.0 → 2.0** | `vida-render`, `vida-red`, data-driven (включая loot tables); Vifada 2 (`@VifadaMulti` / `@VifadaLocal` / `@VifadaRedirect`); кэш агента и HTTP resume в инсталляторе. |
+| **0.7.0**   | Опциональные демо-модули в `mods/` (подключаются в Gradle при наличии каталогов; в минимальном checkout могут отсутствовать).                                    |
+| **0.8.0**   | Синтетические провайдеры `vida` / `minecraft` / `java` в резолвере; платформенные морфы `LatidoPulso` / `LatidoRenderHud`; версии через `BootOptions` / premain. |
+| **0.9.0**   | Дорожная карта по клиентским рендер-оптимизациям Sodium-класса — `docs/session-roadmap.md` (Session 7).                                                          |
+
 
 ## CLI
 
@@ -219,6 +221,11 @@ CurseForge App хранит инстансы в `Instances/<name>/` с `minecraf
 4. Пишет `install.json`.
 
 Как и ATLauncher — только PATCH_EXISTING_INSTANCE.
+
+## Кэш и докачка (2.0)
+
+- **Offline-кэш embedded loader:** переменная окружения `VIDA_INSTALL_CACHE` или JVM `-Dvida.install.cache=<dir>` — переиспользование извлечённого `loader.jar` при совпадении SHA-1 (`InstallerSupport.extractEmbeddedLoader`).
+- **HTTP(S) resume:** утилита `McArtifacts.downloadHttpResumable(URI, Path)` записывает во временный `*.part`, при повторном запуске отправляет `Range: bytes=N-`; при полном ответе HTTP 200 при игнорировании Range удаляет частичный файл и повторяет загрузку. Предназначена для больших ZIP модпаков и прочих артефактов по явному URL.
 
 ## Тесты
 

@@ -168,6 +168,61 @@ final class TransformerTest {
     }
 
     @Test
+    void vifada_multi_injects_into_each_target_method() throws Exception {
+        byte[] target = TestSupport.buildTargetTickAndBump("test/MultiT");
+        byte[] morph = new TestSupport.MorphBuilder("test/MultiMorph", "test.MultiT").start()
+                .shadowField("counter", "I")
+                .injectMulti("hook", new String[] {"tick()V", "bump()V"},
+                        InjectionPoint.HEAD, "counter", false)
+                .build();
+
+        TransformReport r = Transformer.transform(target, List.of(new MorphSource("test/MultiMorph", morph)));
+        assertThat(r.errors()).isEmpty();
+
+        TestSupport.ByteClassLoader cl = defineTarget(r.bytes(), "test/MultiT");
+        Class<?> c = cl.loadClass("test.MultiT");
+        Object inst = c.getDeclaredConstructor().newInstance();
+        c.getMethod("tick").invoke(inst);
+        assertThat(c.getField("counter").getInt(inst)).isEqualTo(2);
+        c.getMethod("bump").invoke(inst);
+        assertThat(c.getField("counter").getInt(inst)).isEqualTo(4);
+    }
+
+    @Test
+    void vifada_redirect_replaces_invokestatic() throws Exception {
+        byte[] target = TestSupport.buildMathMaxTarget("test/MaxT");
+        byte[] morph = new TestSupport.MorphBuilder("test/MaxMorph", "test.MaxT").start()
+                .redirectMathMax("replaceMax")
+                .build();
+
+        TransformReport r = Transformer.transform(target, List.of(new MorphSource("test/MaxMorph", morph)));
+        assertThat(r.errors()).isEmpty();
+
+        TestSupport.ByteClassLoader cl = defineTarget(r.bytes(), "test/MaxT");
+        Class<?> c = cl.loadClass("test.MaxT");
+        Object inst = c.getDeclaredConstructor().newInstance();
+        int v = (int) c.getMethod("maxed", int.class, int.class).invoke(inst, 3, 4);
+        assertThat(v).isEqualTo(7);
+    }
+
+    @Test
+    void equal_priority_same_inject_slot_reports_conflict() {
+        byte[] target = TestSupport.buildSimpleTarget("test/CFoo");
+        byte[] m1 = new TestSupport.MorphBuilder("test/C1", "test.CFoo").withPriority(1000).start()
+                .shadowField("counter", "I")
+                .inject("a", "tick()V", InjectionPoint.HEAD, "counter", false).build();
+        byte[] m2 = new TestSupport.MorphBuilder("test/C2", "test.CFoo").withPriority(1000).start()
+                .shadowField("counter", "I")
+                .inject("b", "tick()V", InjectionPoint.HEAD, "counter", false).build();
+
+        TransformReport r = Transformer.transform(target, List.of(
+                new MorphSource("test/C1", m1),
+                new MorphSource("test/C2", m2)));
+        assertThat(r.errors()).hasSize(1);
+        assertThat(r.errors().get(0)).isInstanceOf(VifadaError.MorphConflict.class);
+    }
+
+    @Test
     void morph_without_annotation_is_rejected_as_parse_error() {
         byte[] target = TestSupport.buildSimpleTarget("test/Foo9");
         var cw = new org.objectweb.asm.ClassWriter(0);

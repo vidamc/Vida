@@ -7,26 +7,21 @@ package dev.vida.loader.internal;
 import dev.vida.core.ApiStatus;
 import dev.vida.core.Log;
 import dev.vida.loader.MorphIndex;
+import dev.vida.loader.profile.PlatformProfileDescriptor;
 import dev.vida.vifada.MorphSource;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Регистрирует платформенные Vifada-морфы {@code dev.vida.platform.*} в
  * {@link MorphIndex} — без участия какого-либо мода.
  *
- * <p>Морфы лежат в {@code :loader}-jar как обычные классы и читаются тем же
- * {@link ClassLoader}, что загрузил сам этот класс; это работает как при
- * запуске через fat-jar агента ({@code agentJar}), так и в юнит-тестах,
- * запускающих {@code BootSequence} из gradle-project-classpath.
- *
- * <h2>Список морфов</h2>
- * <ul>
- *   <li>{@code dev.vida.platform.MinecraftTickMorph} →
- *       {@code net/minecraft/client/Minecraft};</li>
- *   <li>{@code dev.vida.platform.GuiRenderMorph} →
- *       {@code net/minecraft/client/gui/Gui}.</li>
- * </ul>
+ * <p>Если активен {@linkplain PlatformProfileDescriptor профиль} и в нём задан
+ * {@code morphBundle}, в индекс попадают только перечисленные классы; иначе
+ * регистрируются все известные платформенные морфы ({@link #ENTRIES}).
  */
 @ApiStatus.Internal
 public final class PlatformMorphs {
@@ -34,26 +29,33 @@ public final class PlatformMorphs {
     private static final Log LOG = Log.of(PlatformMorphs.class);
 
     /** Пары: (FQN морф-класса, internal-name целевого класса). */
-    private static final String[][] ENTRIES = {
+    static final String[][] ENTRIES = {
             {"dev.vida.platform.MinecraftTickMorph", "net/minecraft/client/Minecraft"},
-            {"dev.vida.platform.GuiRenderMorph",     "net/minecraft/client/gui/Gui"},
+            {"dev.vida.platform.GuiRenderMorph", "net/minecraft/client/gui/Gui"},
+            {"dev.vida.platform.ServerTickMorph", "net/minecraft/server/MinecraftServer"},
+            {"dev.vida.platform.ClientResourceReloadMorph", "net/minecraft/client/Minecraft"},
     };
 
     private PlatformMorphs() {}
 
     /**
-     * Добавляет байты платформенных морфов в билдер. Каждый отсутствующий
-     * ресурс логируется как warn и не ломает бутстрап.
-     *
      * @return количество фактически добавленных морфов
      */
-    public static int register(MorphIndex.Builder sink) {
+    public static int register(MorphIndex.Builder sink, Optional<PlatformProfileDescriptor> profile) {
+        Set<String> allowFqcn = null;
+        if (profile.isPresent() && profile.get().morphBundle().isPresent()) {
+            allowFqcn = new HashSet<>(profile.get().morphBundle().get());
+        }
+
         int added = 0;
         ClassLoader cl = PlatformMorphs.class.getClassLoader();
         if (cl == null) cl = ClassLoader.getSystemClassLoader();
 
         for (String[] entry : ENTRIES) {
             String fqn = entry[0];
+            if (allowFqcn != null && !allowFqcn.contains(fqn)) {
+                continue;
+            }
             String target = entry[1];
             String resource = fqn.replace('.', '/') + ".class";
 
@@ -64,6 +66,20 @@ public final class PlatformMorphs {
             }
             sink.add(target, new MorphSource(fqn.replace('.', '/'), bytes));
             added++;
+        }
+        if (allowFqcn != null) {
+            for (String req : allowFqcn) {
+                boolean ok = false;
+                for (String[] e : ENTRIES) {
+                    if (req.equals(e[0])) {
+                        ok = true;
+                        break;
+                    }
+                }
+                if (!ok) {
+                    LOG.warn("Vida: morphBundle lists unknown platform morph '{}'", req);
+                }
+            }
         }
         if (added > 0) {
             LOG.info("Vida: registered {} platform morph(s)", added);

@@ -57,7 +57,7 @@ jobs:
       # любое предупреждение ошибкой; тесты + JaCoCo идут в рамках check.
       - name: Build
         shell: bash
-        run: ./gradlew --no-daemon --stacktrace build
+        run: ./gradlew --no-daemon --stacktrace verifyPlatformProfiles build vidaDocTest
 
       # Fat-jar собирается на Linux (он одинаковый на всех ОС) — нужен как
       # входной артефакт для сборки нативных пакетов в release.yml.
@@ -151,3 +151,43 @@ jobs:
             "$workdir/versions/vida-1.21.1-0.0.0-smoke/vida-1.21.1-0.0.0-smoke.json"
           grep -q '"lastVersionId": "vida-1.21.1-0.0.0-smoke"' \
             "$workdir/launcher_profiles.json"
+
+  # ---------------------------------------------------------------------------
+  #  Полная матрица JDK (SemVer-платформа + будущие релизы). Логируем вывод
+  #  `java -version` для сравнения поведения на 21 / 22 / 23 / 25.
+  # ---------------------------------------------------------------------------
+  jdk-matrix:
+    name: JDK ${{ matrix.java }} build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        java: ['21', '22', '23', '25']
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          validate-wrappers: true
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: JDK fingerprint
+        shell: bash
+        run: |
+          set -euxo pipefail
+          java -version 2>&1 | tee "jdk-${{ matrix.java }}-version.txt"
+          echo "----"
+          ./gradlew --no-daemon -version
+
+      - name: Build (full)
+        shell: bash
+        run: ./gradlew --no-daemon --stacktrace verifyPlatformProfiles build vidaDocTest

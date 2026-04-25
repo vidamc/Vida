@@ -13,7 +13,7 @@ import dev.vida.core.ApiStatus;
  * объявлены, но в P7 ещё не реализованы; попытка их использовать даст
  * {@link VifadaError.UnsupportedAt}.
  */
-@ApiStatus.Preview("vifada")
+@ApiStatus.Stable
 public enum InjectionPoint {
 
     /** Самое начало метода, до первой пользовательской инструкции. */

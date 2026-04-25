@@ -10,7 +10,7 @@
  * умеет доставлять. Все они публикуются ядром Vida; моды лишь подписываются
  * на них через статическое поле {@code TIPO}.
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 package dev.vida.base.latidos.eventos;
 
 import dev.vida.core.ApiStatus;

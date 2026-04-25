@@ -19,7 +19,7 @@ import java.util.Objects;
  *     dev.vida.loader.json  ← наш компонент (с +agents для Prism)
  *   libraries/
  *     loader-&lt;ver&gt;.jar      ← при MMC-hint: local
- *   .minecraft/             ← game dir (minecraft/ на Linux у MultiMC)
+ *   minecraft/              ← game dir (как в Prism/MultiMC gameRoot())
  *     mods/
  *   vida/
  *     install.json          ← audit-inventory
@@ -78,11 +78,10 @@ public final class PrismInstanceLayout {
     }
 
     /**
-     * Game-directory. Prism с недавних версий принимает как {@code .minecraft/},
-     * так и {@code minecraft/}. Для максимальной совместимости и с MultiMC,
-     * и с новым Prism пишем {@code .minecraft/} — он работает в обоих.
+     * Game-directory. Совпадает с {@code MinecraftInstance::gameRoot()} в Prism:
+     * приоритетно {@code minecraft/} (см. MultiMC wiki Folder Structure).
      */
-    public Path gameDir()            { return instanceDir.resolve(".minecraft"); }
+    public Path gameDir()            { return instanceDir.resolve("minecraft"); }
     public Path modsDir()            { return gameDir().resolve("mods"); }
 
     public Path vidaDir()            { return instanceDir.resolve("vida"); }

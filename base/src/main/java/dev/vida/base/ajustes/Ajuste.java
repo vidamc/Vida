@@ -18,7 +18,7 @@ import java.util.function.Function;
  *
  * @param <T> тип значения
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public final class Ajuste<T> {
 
     private final String ruta;
@@ -26,6 +26,7 @@ public final class Ajuste<T> {
     private final T defecto;
     private final Validador<T> validador;
     private final String descripcion;
+    private final boolean sincronizar;
 
     private Ajuste(Builder<T> b) {
         this.ruta        = Objects.requireNonNull(b.ruta, "ruta");
@@ -33,6 +34,7 @@ public final class Ajuste<T> {
         this.defecto     = Objects.requireNonNull(b.defecto, "defecto");
         this.validador   = b.validador;
         this.descripcion = b.descripcion == null ? "" : b.descripcion;
+        this.sincronizar = b.sincronizar;
     }
 
     public String ruta()            { return ruta; }
@@ -40,6 +42,14 @@ public final class Ajuste<T> {
     public T defecto()              { return defecto; }
     public Validador<T> validador() { return validador; }
     public String descripcion()     { return descripcion; }
+
+    /**
+     * Если {@code true}, значение может входить в серверный снимок для клиента
+     * (wire-тип в модуле {@code vida-red}: {@code PaqueteAjustesSincronizacionServidor}).
+     */
+    public boolean sincronizarConServidor() {
+        return sincronizar;
+    }
 
     /** Проверяет значение. */
     public Optional<String> validar(T valor) {
@@ -81,6 +91,7 @@ public final class Ajuste<T> {
         private final T defecto;
         private Validador<T> validador = Validador.ninguno();
         private String descripcion;
+        private boolean sincronizar;
 
         private Builder(String ruta, Class<T> clase, T defecto) {
             this.ruta = Objects.requireNonNull(ruta, "ruta");
@@ -116,7 +127,22 @@ public final class Ajuste<T> {
             return validador(fn::apply);
         }
 
-        public Ajuste<T> build() { return new Ajuste<>(this); }
+        /**
+         * Помечает настройку для включения в серверный снимок, пересылаемый клиенту
+         * (wire-тип в модуле {@code vida-red}: {@code PaqueteAjustesSincronizacionServidor}).
+         */
+        public Builder<T> sincronizar() {
+            this.sincronizar = true;
+            return this;
+        }
+
+        public Ajuste<T> build() {
+            Ajuste<T> a = new Ajuste<>(this);
+            if (sincronizar) {
+                AjustesSincronizacionCatalogo.registrar(a);
+            }
+            return a;
+        }
 
         @SuppressWarnings({"unchecked", "rawtypes"})
         private static int compara(Object a, Object b) {

@@ -5,9 +5,13 @@
 package dev.vida.loader;
 
 import dev.vida.core.ApiStatus;
-import dev.vida.loader.internal.BrandingEscultor;
+import dev.vida.escultores.BrandingEscultor;
+import dev.vida.escultores.Escultor;
+import dev.vida.vifada.MorphSource;
+import dev.vida.vifada.MorphMethodResolution;
 import dev.vida.vifada.TransformReport;
 import dev.vida.vifada.Transformer;
+import dev.vida.vifada.VifadaMorphTraceHtml;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
 import java.security.ProtectionDomain;
@@ -46,15 +50,32 @@ import java.util.function.Consumer;
 @ApiStatus.Preview("loader")
 public final class VidaClassTransformer implements ClassFileTransformer {
 
+    /**
+     * Если {@code true} (системное свойство {@code vida.loader.profileEscultorNanos}),
+     * при каждом проходе Escultor по классу считается длительность в наносекундах.
+     * По умолчанию {@code false}: при старте остаются только счётчики попаданий,
+     * без двойного {@code nanoTime} на каждый Escultor (см. ТЗ — быстрый старт).
+     */
+    private static final boolean PROFILE_ESCULTOR_NANOS =
+            Boolean.parseBoolean(System.getProperty("vida.loader.profileEscultorNanos", "false"));
+
     private final MorphIndex index;
     private final Consumer<LoaderError> errorSink;
     private final Map<String, String> obfToDeobf;
+    private final MorphMethodResolution morphMethodResolution;
+    private final TransformBytecodeCache bytecodeCache;
+    private final String mappingFingerprint;
     private final LongAdder transformed = new LongAdder();
     private final LongAdder skipped     = new LongAdder();
     private final LongAdder errors      = new LongAdder();
+    private final LongAdder cacheHits   = new LongAdder();
+    private final LongAdder cacheMisses = new LongAdder();
+
+    private volatile List<Escultor> modEscultores = List.of();
+    private final EscultorRegistroMetricas escultorMetricas = new EscultorRegistroMetricas();
 
     public VidaClassTransformer(MorphIndex index, Consumer<LoaderError> errorSink) {
-        this(index, errorSink, Map.of());
+        this(index, errorSink, Map.of(), null, null, null);
     }
 
     /**
@@ -64,9 +85,50 @@ public final class VidaClassTransformer implements ClassFileTransformer {
      */
     public VidaClassTransformer(MorphIndex index, Consumer<LoaderError> errorSink,
                                 Map<String, String> obfToDeobf) {
+        this(index, errorSink, obfToDeobf, null, null, null);
+    }
+
+    /**
+     * @param morphMethodResolution резолв имён методов Mojmap → obf (из client_mappings)
+     */
+    public VidaClassTransformer(
+            MorphIndex index,
+            Consumer<LoaderError> errorSink,
+            Map<String, String> obfToDeobf,
+            MorphMethodResolution morphMethodResolution) {
+        this(index, errorSink, obfToDeobf, morphMethodResolution, null, null);
+    }
+
+    /**
+     * @param bytecodeCache кеш успешных трансформаций (или {@code null})
+     * @param mappingFingerprint SHA-256 hex текста client_mappings — участвует в ключе кеша
+     */
+    public VidaClassTransformer(
+            MorphIndex index,
+            Consumer<LoaderError> errorSink,
+            Map<String, String> obfToDeobf,
+            MorphMethodResolution morphMethodResolution,
+            TransformBytecodeCache bytecodeCache,
+            String mappingFingerprint) {
         this.index = Objects.requireNonNull(index, "index");
         this.errorSink = errorSink == null ? e -> {} : errorSink;
         this.obfToDeobf = obfToDeobf == null ? Map.of() : obfToDeobf;
+        this.morphMethodResolution = morphMethodResolution;
+        this.bytecodeCache = bytecodeCache;
+        this.mappingFingerprint = mappingFingerprint;
+    }
+
+    /**
+     * Escultor'ы из {@code vida.mod.json}, загруженные мод-класслодером.
+     * Вызывается до {@code invokeEntrypoints}, но после регистрации transformer
+     * часть классов уже могла загрузиться без них.
+     */
+    public void instalarEscultoresMod(List<Escultor> escultores) {
+        this.modEscultores = escultores == null ? List.of() : List.copyOf(escultores);
+    }
+
+    public EscultorRegistroMetricas escultorMetricas() {
+        return escultorMetricas;
     }
 
     /** Индекс, из которого работает этот трансформер. */
@@ -83,6 +145,12 @@ public final class VidaClassTransformer implements ClassFileTransformer {
      */
     public long skippedCount()     { return skipped.sum(); }
     public long errorCount()       { return errors.sum(); }
+
+    /** Попадания дискового кеша трансформаций (только если кеш включён). */
+    public long transformCacheHits() { return cacheHits.sum(); }
+
+    /** Промахи кеша при включённом кеше. */
+    public long transformCacheMisses() { return cacheMisses.sum(); }
 
     // ====================================================================
 
@@ -113,25 +181,29 @@ public final class VidaClassTransformer implements ClassFileTransformer {
         // большинство классов никогда не проходит pre-check, так что это
         // добавляет единицы наносекунд на класс — незаметно для hot-path.
         byte[] workingBuf = classfileBuffer;
-        boolean branded = false;
+        boolean trabajo = false;
         if (BrandingEscultor.mightMatch(workingBuf)) {
             byte[] patched = BrandingEscultor.tryPatch(workingBuf);
             if (patched != null) {
                 workingBuf = patched;
-                branded = true;
+                trabajo = true;
             }
         }
+
+        EscultoresResult esc = aplicarEscultores(className, workingBuf);
+        workingBuf = esc.bytes();
+        trabajo |= esc.modificado();
 
         // Resolve: если className обфусцирован, ищем деобфусцированный эквивалент.
         String morphKey = resolveMorphKey(className);
 
         // No-morph branch — это 99.99% всех вызовов; НИКАКИХ counter-ops.
         if (morphKey == null) {
-            return branded ? workingBuf : null;
+            return trabajo ? workingBuf : null;
         }
         byte[] morphed = applyMorphs(morphKey, workingBuf);
         if (morphed != null) return morphed;
-        return branded ? workingBuf : null;
+        return trabajo ? workingBuf : null;
     }
 
     /**
@@ -146,10 +218,42 @@ public final class VidaClassTransformer implements ClassFileTransformer {
             byte[] branded = BrandingEscultor.tryPatch(working);
             if (branded != null) working = branded;
         }
+        EscultoresResult esc = aplicarEscultores(internalName, working);
+        working = esc.bytes();
         String morphKey = resolveMorphKey(internalName);
         if (morphKey == null) return working;
         byte[] out = applyMorphs(morphKey, working);
         return out != null ? out : working;
+    }
+
+    private record EscultoresResult(byte[] bytes, boolean modificado) {}
+
+    private EscultoresResult aplicarEscultores(String internalName, byte[] buf) {
+        byte[] wb = buf;
+        boolean cambio = false;
+        for (Escultor e : modEscultores) {
+            long t0 = PROFILE_ESCULTOR_NANOS ? System.nanoTime() : 0L;
+            try {
+                if (!e.mightMatch(internalName, wb)) {
+                    escultorMetricas.registro(e.nombre(),
+                            PROFILE_ESCULTOR_NANOS ? System.nanoTime() - t0 : 0L, false);
+                    continue;
+                }
+                byte[] patch = e.tryPatch(internalName, wb);
+                escultorMetricas.registro(e.nombre(),
+                        PROFILE_ESCULTOR_NANOS ? System.nanoTime() - t0 : 0L, patch != null);
+                if (patch != null) {
+                    wb = patch;
+                    cambio = true;
+                }
+            } catch (RuntimeException ex) {
+                escultorMetricas.registro(e.nombre(),
+                        PROFILE_ESCULTOR_NANOS ? System.nanoTime() - t0 : 0L, false);
+                errorSink.accept(new LoaderError.BootFailure(
+                        "Escultor '" + e.nombre() + "' failed on " + internalName + ": " + ex));
+            }
+        }
+        return new EscultoresResult(wb, cambio);
     }
 
     /**
@@ -165,13 +269,33 @@ public final class VidaClassTransformer implements ClassFileTransformer {
     }
 
     private byte[] applyMorphs(String internalName, byte[] buf) {
-        TransformReport report = Transformer.transform(buf, index.forTarget(internalName));
+        List<MorphSource> sources = index.forTarget(internalName);
+        String cacheKey = null;
+        if (bytecodeCache != null && !sources.isEmpty()) {
+            cacheKey = TransformBytecodeCache.computeKey(
+                    internalName, buf, sources, mappingFingerprint);
+            byte[] hit = bytecodeCache.get(cacheKey);
+            if (hit != null) {
+                cacheHits.increment();
+                transformed.increment();
+                return hit;
+            }
+            cacheMisses.increment();
+        }
+
+        TransformReport report = Transformer.transform(
+                buf, sources, internalName, morphMethodResolution);
+        VifadaMorphTraceHtml.registrar(internalName, report);
         if (report.hasErrors()) {
             errors.increment();
             errorSink.accept(new LoaderError.VifadaFailed(internalName, List.copyOf(report.errors())));
             if (report.bytes() == null) return null;
         }
         transformed.increment();
-        return report.bytes();
+        byte[] out = report.bytes();
+        if (bytecodeCache != null && cacheKey != null && out != null && !report.hasErrors()) {
+            bytecodeCache.put(cacheKey, out);
+        }
+        return out;
     }
 }

@@ -7,6 +7,7 @@ package dev.vida.loader;
 import static org.assertj.core.api.Assertions.*;
 
 import dev.vida.base.LatidoGlobal;
+import dev.vida.base.ModulosInstaladosGlobal;
 import dev.vida.base.latidos.Fase;
 import dev.vida.base.latidos.LatidoBus;
 import dev.vida.base.latidos.Prioridad;
@@ -15,6 +16,8 @@ import dev.vida.platform.PlatformBridge;
 import dev.vida.platform.VanillaBridge;
 import dev.vida.render.LatidoRenderHud;
 import dev.vida.render.PintorHud;
+import dev.vida.resolver.ResolverError;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,6 +48,7 @@ final class BootSequenceIntegrationTest {
     void reset() {
         VidaRuntime.resetForTests();
         LatidoGlobal.resetForTests();
+        ModulosInstaladosGlobal.resetForTests();
         VanillaBridge.resetForTests();
     }
 
@@ -52,6 +56,7 @@ final class BootSequenceIntegrationTest {
     void cleanup() {
         VidaRuntime.resetForTests();
         LatidoGlobal.resetForTests();
+        ModulosInstaladosGlobal.resetForTests();
         VanillaBridge.resetForTests();
     }
 
@@ -95,6 +100,22 @@ final class BootSequenceIntegrationTest {
         assertThat(report.environment().resolvedMods())
                 .extracting(m -> m.id())
                 .containsExactly("needs_mc");
+    }
+
+    @Test
+    void access_denied_root_mod_fails_resolution(@TempDir Path root) throws Exception {
+        Path mods = root.resolve("mods");
+        Files.createDirectories(mods);
+        TestSupport.buildModJar(mods.resolve("blocked.jar"), "blocked", "1.0.0", null, null);
+
+        BootReport report = VidaBoot.boot(BootOptions.builder()
+                .modsDir(mods)
+                .addAccessDenied("blocked")
+                .build());
+
+        assertThat(report.errors())
+                .anyMatch(e -> e instanceof LoaderError.ResolutionFailed rf
+                        && rf.cause() instanceof ResolverError.AccessPolicyDenied);
     }
 
     @Test
@@ -165,5 +186,6 @@ final class BootSequenceIntegrationTest {
         VidaEnvironment env = report.environment();
         assertThat(env.morphs().hasMorphs("net/minecraft/client/Minecraft")).isTrue();
         assertThat(env.morphs().hasMorphs("net/minecraft/client/gui/Gui")).isTrue();
+        assertThat(env.morphs().hasMorphs("net/minecraft/server/MinecraftServer")).isTrue();
     }
 }

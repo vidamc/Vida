@@ -9,5 +9,5 @@ import dev.vida.core.ApiStatus;
 /**
  * Маркер пакета, который идёт с клиента на сервер.
  */
-@ApiStatus.Preview("red")
+@ApiStatus.Stable
 public interface PaqueteCliente {}

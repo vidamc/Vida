@@ -17,7 +17,7 @@ import dev.vida.core.ApiStatus;
  * try-with-resources в сценариях «подписаться только на время этой
  * операции».
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public interface Suscripcion extends AutoCloseable {
 
     /** {@code true}, если подписка ещё жива (не отменена). */

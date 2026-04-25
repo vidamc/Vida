@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.gradle.api.DefaultTask;
@@ -36,12 +37,24 @@ public abstract class GenerateManifestTask extends DefaultTask {
     @Input @Optional public abstract Property<String> getModDescription();
     @Input @Optional public abstract Property<String> getLicense();
     @Input @Optional public abstract Property<String> getEntrypoint();
+    @Input public abstract ListProperty<String> getEntrypointsPreLaunch();
+    @Input public abstract ListProperty<String> getEntrypointsMain();
+    @Input public abstract ListProperty<String> getEntrypointsClient();
+    @Input public abstract ListProperty<String> getEntrypointsServer();
     @Input public abstract ListProperty<String> getAuthors();
     @Input public abstract ListProperty<String> getPuertas();
     @Input public abstract ListProperty<String> getEscultores();
+    @Input public abstract ListProperty<String> getVifadaPackages();
+    @Input @Optional public abstract Property<String> getVifadaConfig();
+    @Input public abstract Property<Integer> getVifadaPriority();
+    @Input public abstract ListProperty<String> getModules();
     @Input public abstract MapProperty<String, String> getDependencies();
     @Input public abstract MapProperty<String, String> getOptionalDependencies();
     @Input public abstract ListProperty<String> getIncompatibilities();
+
+    @Input public abstract Property<Boolean> getInjectDefaultVidaDependency();
+
+    @Input public abstract Property<String> getDefaultVidaDependencyRange();
 
     @OutputFile public abstract RegularFileProperty getOutput();
 
@@ -52,7 +65,13 @@ public abstract class GenerateManifestTask extends DefaultTask {
 
     @TaskAction
     public void generate() throws IOException {
-        String json = ManifestJsonWriter.toJson(
+        LinkedHashMap<String, String> deps =
+                new LinkedHashMap<>(Map.copyOf(getDependencies().get()));
+        if (Boolean.TRUE.equals(getInjectDefaultVidaDependency().getOrElse(true))) {
+            deps.putIfAbsent("vida", getDefaultVidaDependencyRange().getOrElse("^0.1.0"));
+        }
+
+        String json = ManifestJsonWriter.toJson(ManifestJsonWriter.draftFromModSpec(
                 getSchema().get(),
                 getModId().get(),
                 getModVersion().get(),
@@ -60,12 +79,20 @@ public abstract class GenerateManifestTask extends DefaultTask {
                 getModDescription().getOrElse(""),
                 getLicense().getOrElse(""),
                 getEntrypoint().getOrElse(""),
+                List.copyOf(getEntrypointsPreLaunch().get()),
+                List.copyOf(getEntrypointsMain().get()),
+                List.copyOf(getEntrypointsClient().get()),
+                List.copyOf(getEntrypointsServer().get()),
                 List.copyOf(getAuthors().get()),
                 List.copyOf(getPuertas().get()),
                 List.copyOf(getEscultores().get()),
-                Map.copyOf(getDependencies().get()),
+                List.copyOf(getVifadaPackages().get()),
+                getVifadaConfig().getOrElse(""),
+                getVifadaPriority().get(),
+                List.copyOf(getModules().get()),
+                Map.copyOf(deps),
                 Map.copyOf(getOptionalDependencies().get()),
-                List.copyOf(getIncompatibilities().get()));
+                List.copyOf(getIncompatibilities().get())));
 
         Path out = getOutput().get().getAsFile().toPath();
         Files.createDirectories(out.toAbsolutePath().getParent());

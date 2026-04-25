@@ -12,7 +12,7 @@ import dev.vida.core.ApiStatus;
  * <p>Это не runtime-класс сущности и не vanilla mob-category, а
  * компактная классификация для модов и bridge-слоёв Vida.
  */
-@ApiStatus.Preview("entidad")
+@ApiStatus.Stable
 public enum TipoEntidad {
     CRIATURA(false, true, true),
     MONSTRUO(true, true, true),

@@ -7,7 +7,9 @@ package dev.vida.puertas;
 import dev.vida.core.ApiStatus;
 import dev.vida.core.Log;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
@@ -33,7 +35,7 @@ import org.objectweb.asm.tree.MethodNode;
  * <p>Класс иммутабельный — конкретные директивы передаются в метод
  * трансформации; применять можно к разным классам параллельно.
  */
-@ApiStatus.Preview("puertas")
+@ApiStatus.Stable
 public final class AplicadorPuertas {
 
     private static final Log LOG = Log.of(AplicadorPuertas.class);
@@ -46,6 +48,22 @@ public final class AplicadorPuertas {
             ~(Opcodes.ACC_PRIVATE | Opcodes.ACC_PROTECTED);
 
     private AplicadorPuertas() {}
+
+    /**
+     * Индекс директив по {@link PuertaDirectiva#claseInternal()} — для jar-in-jar и
+     * многопроходной обработки без сканирования всего списка на каждый класс.
+     */
+    public static Map<String, List<PuertaDirectiva>> indicePorClase(List<PuertaDirectiva> todas) {
+        Objects.requireNonNull(todas, "todas");
+        Map<String, List<PuertaDirectiva>> map = new LinkedHashMap<>();
+        for (PuertaDirectiva d : todas) {
+            map.computeIfAbsent(d.claseInternal(), k -> new ArrayList<>()).add(d);
+        }
+        for (Map.Entry<String, List<PuertaDirectiva>> e : map.entrySet()) {
+            e.setValue(List.copyOf(e.getValue()));
+        }
+        return Map.copyOf(map);
+    }
 
     /** Результат применения — новые байты + отчёт. */
     public record Resultado(byte[] bytes, Informe informe) {}

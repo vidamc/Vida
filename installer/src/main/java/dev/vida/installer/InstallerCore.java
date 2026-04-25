@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
  * {@link #INSTALL_MANIFEST} оставлены здесь публичными для тестов и
  * обратной совместимости с внешним кодом.
  */
-@ApiStatus.Preview("installer")
+@ApiStatus.Stable
 public final class InstallerCore {
 
     private static final Logger LOG = LoggerFactory.getLogger(InstallerCore.class);
@@ -65,7 +65,7 @@ public final class InstallerCore {
             LOG.info("Installing via {} → {}", handler.kind().displayName(), opt.installDir());
             return handler.install(opt, progress);
         } catch (IllegalArgumentException e) {
-            // Launcher не реализован (Modrinth/CurseForge в Фазе B).
+            // Неизвестный LauncherKind или ошибка выбора обработчика.
             progress.accept("ERROR: " + e.getMessage());
             return new InstallReport(
                     opt, Instant.now(),

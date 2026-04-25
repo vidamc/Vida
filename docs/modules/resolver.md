@@ -41,14 +41,17 @@ enum DependencyKind { REQUIRED, OPTIONAL, INCOMPATIBLE }
 
 ### `ResolverOptions`
 
-Флажки поведения:
+Флажки поведения (см. Javadoc `dev.vida.resolver.ResolverOptions`):
 
 | Поле | Что делает |
 |------|-----------|
-| `preferNewest` | при конфликте выбирать более новую версию (дефолт `true`) |
+| `strategy` | `NEWEST` / `OLDEST` / `STABLE_FIRST` — порядок перебора кандидатов |
 | `pins` | мапа `id → Version`, жёстко фиксирует выбор |
-| `timeoutMs` | лимит по времени |
-| `solutionLimit` | сколько решений перебрать перед fail'ом |
+| `excludes` | id, которые можно «пропустить», если нет жёсткого требования (`Excluded`, если required) |
+| `accessDeniedIds` | политика доступа: провайдеры с этим `id` **никогда** не выбираются; см. [resolver-policies](../guides/resolver-policies.md) |
+| `skipOptional` | не тянуть optional-зависимости |
+| `maxDecisions` | лимит перебора |
+| `timeoutMillis` | лимит по времени |
 
 ### `Resolution`
 
@@ -63,13 +66,14 @@ record Resolution(
 
 ### `ResolverError`
 
-Структурированные неудачи:
+Структурированные неудачи (sealed-иерархия, актуальный список в Javadoc):
 
-- `MissingRequired(String id, VersionRange range, String byMod)` — мод `byMod` требует `id` в диапазоне, провайдера нет.
-- `VersionConflict(String id, List<(String, VersionRange)> demanders)` — несколько модов требуют несовместимые диапазоны одного `id`.
-- `Incompatibility(String byMod, Dependency dep, Provider match)` — `byMod` объявил `INCOMPATIBLE`, а `match` всё равно выбран.
-- `LimitExceeded(String kind, long limit)` — таймаут или перебор.
-- `CycleDetected(List<String> cycle)` — циклическая зависимость (через REQUIRED); мягкие циклы разрешены.
+- `Missing` — нет подходящего провайдера или диапазон пуст.
+- `VersionConflict` — совокупность range-ограничений несовместима.
+- `Incompatibility` — объявленная несовместимость с уже выбранным модом.
+- `Excluded` — id в `excludes`, но есть жёсткое требование.
+- `AccessPolicyDenied` — id в `accessDeniedIds` или все кандидаты запрещены политикой.
+- `BadPin`, `DecisionLimit`, `Timeout`, `DuplicateProvider` — см. исходники.
 
 ## Алгоритм
 

@@ -86,6 +86,21 @@ class CtgRoundtripTest {
         assertThat(rd.unwrapErr()).isInstanceOf(MappingError.UnsupportedVersion.class);
     }
 
+    /** Forward-incompatible minor: reader MAX_SUPPORTED_MINOR is lower than file. */
+    @Test
+    void unsupportedMinorIsRejected() {
+        byte[] headerBad = new byte[] {
+                'V', 'I', 'D', 'A', 'C', 'T', 'G', '\n',
+                1, 99, 0, 0,
+        };
+        Result<MappingTree, MappingError> rd = CtgReader.read(
+                "v1.99.ctg", new ByteArrayInputStream(headerBad));
+        assertThat(rd.isErr()).isTrue();
+        MappingError err = rd.unwrapErr();
+        assertThat(err).isInstanceOf(MappingError.UnsupportedVersion.class);
+        assertThat(err.message()).contains("1.99");
+    }
+
     @Test
     void emptyTreeRoundtrips() {
         MappingTree empty = MappingTree.builder(Namespace.OBF, Namespace.NAMED).build();

@@ -13,7 +13,7 @@ import dev.vida.core.ApiStatus;
  * при использовании соответствующего инструмента. Несколько типов можно
  * комбинировать через флаги в {@link PropiedadesBloque#herramientas}.
  */
-@ApiStatus.Preview("bloque")
+@ApiStatus.Stable
 public enum TipoHerramienta {
     /** Рука. Любой блок с {@link NivelHerramienta#NINGUNO}. */
     MANO,

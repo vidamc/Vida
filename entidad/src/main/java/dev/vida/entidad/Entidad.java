@@ -15,7 +15,7 @@ import java.util.Objects;
  * <p>Содержит только стабильные, сериализуемые характеристики типа:
  * идентификатор, базовую категорию и иммутабельные свойства.
  */
-@ApiStatus.Preview("entidad")
+@ApiStatus.Stable
 public final class Entidad {
 
     private final Identifier id;

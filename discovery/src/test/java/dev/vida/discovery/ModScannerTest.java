@@ -191,6 +191,29 @@ class ModScannerTest {
                 .isEqualTo("0".repeat(64));
     }
 
+    @Test
+    void scan_three_hundred_mods_completes(@TempDir Path tmp) throws IOException {
+        for (int i = 0; i < 300; i++) {
+            String id = "bulk" + i;
+            String manifest = """
+                    {
+                      "schema": 1,
+                      "id": "%s",
+                      "version": "1.0.0",
+                      "name": "%s"
+                    }
+                    """.formatted(id, id);
+            Path jar = tmp.resolve(id + ".jar");
+            TestJars.writeToDisk(jar, entries("vida.mod.json", manifest));
+        }
+        long t0 = System.nanoTime();
+        DiscoveryReport report = ModScanner.scan(tmp);
+        long ms = (System.nanoTime() - t0) / 1_000_000L;
+        assertThat(report.errors()).isEmpty();
+        assertThat(report.size()).isEqualTo(300);
+        assertThat(ms).isLessThan(120_000L);
+    }
+
     // --------------------------------------------------------------- helpers
 
     private static Map<String, byte[]> entries(String path, String content) {

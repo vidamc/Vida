@@ -24,7 +24,7 @@ import java.util.Optional;
  * и список записей становится иммутабельным для чтения (последние
  * снапшоты переиспользуются).
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public final class DefaultCatalogo<T> implements CatalogoMutable<T> {
 
     private final Identifier reestroId;

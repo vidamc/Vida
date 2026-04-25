@@ -48,4 +48,21 @@ final class VidaPremainTest {
         assertThat(opts.gameJars()).containsExactly(
                 Path.of("a.jar"), Path.of("b.jar"), Path.of("c.jar"));
     }
+
+    @Test
+    void parses_access_denied_single_id_from_agent_string() {
+        BootOptions opts = VidaPremain.buildOptions("accessDenied=blocked");
+        assertThat(opts.accessDeniedIds()).containsExactly("blocked");
+    }
+
+    @Test
+    void parses_access_denied_multiple_ids_from_system_property() {
+        System.setProperty("vida.accessDenied", "bad_mod,other.mod");
+        try {
+            BootOptions opts = VidaPremain.buildOptions(null);
+            assertThat(opts.accessDeniedIds()).containsExactlyInAnyOrder("bad_mod", "other.mod");
+        } finally {
+            System.clearProperty("vida.accessDenied");
+        }
+    }
 }

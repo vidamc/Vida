@@ -18,7 +18,7 @@ import dev.vida.core.ApiStatus;
  *
  * <p>Задачи одинакового приоритета обрабатываются FIFO.
  */
-@ApiStatus.Preview("susurro")
+@ApiStatus.Stable
 public enum Prioridad {
     ALTA(0),
     NORMAL(1),

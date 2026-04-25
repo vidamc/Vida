@@ -19,6 +19,8 @@ import java.util.Objects;
 /**
  * Чтение бинарного формата {@link CtgFormat .ctg} в {@link MappingTree}.
  *
+ * <p>Совместимость версий — {@link CtgMappingFormat}.
+ *
  * <p>Зеркалит {@link CtgWriter}. Возвращает {@link Result.Err} при:
  * <ul>
  *   <li>неверной сигнатуре ({@link MappingError.Corrupted});</li>
@@ -57,6 +59,9 @@ public final class CtgReader {
             int major = dis.readUnsignedByte();
             int minor = dis.readUnsignedByte();
             if (major != CtgFormat.VERSION_MAJOR) {
+                return Result.err(new MappingError.UnsupportedVersion(sourceName, major, minor));
+            }
+            if (minor > CtgMappingFormat.MAX_SUPPORTED_MINOR) {
                 return Result.err(new MappingError.UnsupportedVersion(sourceName, major, minor));
             }
             dis.readUnsignedShort(); // flags, ignored

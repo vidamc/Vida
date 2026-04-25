@@ -8,7 +8,7 @@ import dev.vida.core.ApiStatus;
 import java.util.Objects;
 
 /** Структурированные ошибки Vifada. */
-@ApiStatus.Preview("vifada")
+@ApiStatus.Stable
 public sealed interface VifadaError {
 
     /** Байткод морфа невалиден или не соответствует ожиданиям парсера. */
@@ -81,6 +81,22 @@ public sealed interface VifadaError {
             Objects.requireNonNull(morphName);
             Objects.requireNonNull(declared);
             Objects.requireNonNull(actual);
+        }
+    }
+
+    /**
+     * Два разных морфа с одинаковым приоритетом претендуют на одну точку инъекции в одном методе.
+     *
+     * @param hint например повысить различие через {@link dev.vida.vifada.VifadaMorph#priority()}
+     */
+    record MorphConflict(String targetClass, String slotDescription, String morphA,
+                         String morphB, int priority, String hint) implements VifadaError {
+        public MorphConflict {
+            Objects.requireNonNull(targetClass);
+            Objects.requireNonNull(slotDescription);
+            Objects.requireNonNull(morphA);
+            Objects.requireNonNull(morphB);
+            Objects.requireNonNull(hint);
         }
     }
 

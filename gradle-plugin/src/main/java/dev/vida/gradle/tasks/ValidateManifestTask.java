@@ -5,6 +5,7 @@
 package dev.vida.gradle.tasks;
 
 import dev.vida.manifest.ManifestError;
+import dev.vida.fuente.FuenteManifestoDatapackValidador;
 import dev.vida.manifest.ManifestParser;
 import dev.vida.manifest.ModManifest;
 import java.io.IOException;
@@ -13,8 +14,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
+import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.TaskAction;
 
 /**
@@ -28,6 +31,14 @@ public abstract class ValidateManifestTask extends DefaultTask {
 
     @InputFile
     public abstract RegularFileProperty getManifestFile();
+
+    /**
+     * Корень resources (часто {@code src/main/resources}) для Fuente datapack-check.
+     * {@code @Internal}: каталог может ещё не существовать; корректность и так
+     * проверяется в теле задачи.
+     */
+    @Internal
+    public abstract DirectoryProperty getResourcesRoot();
 
     public ValidateManifestTask() {
         setGroup("vida");
@@ -49,5 +60,14 @@ public abstract class ValidateManifestTask extends DefaultTask {
         ModManifest m = res.unwrap();
         getLogger().lifecycle("vida.mod.json ok — id='{}' version='{}' name='{}'",
                 m.id(), m.version(), m.name());
+
+        Path resources = getResourcesRoot().getOrNull() == null
+                ? null
+                : getResourcesRoot().get().getAsFile().toPath();
+        if (resources != null && Files.isDirectory(resources)) {
+            FuenteManifestoDatapackValidador.validarRecursos(m, resources).ifPresent(msg -> {
+                throw new GradleException("vida:dataDriven validation failed: " + msg);
+            });
+        }
     }
 }

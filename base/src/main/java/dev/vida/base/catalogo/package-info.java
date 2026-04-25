@@ -23,7 +23,7 @@
  *   <li>{@link dev.vida.base.catalogo.CatalogoManejador CatalogoManejador} — «шкаф каталогов»: один на рантайм, владеет множеством конкретных реестров.</li>
  * </ul>
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 package dev.vida.base.catalogo;
 
 import dev.vida.core.ApiStatus;

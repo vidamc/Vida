@@ -15,7 +15,7 @@ import java.util.Optional;
  * {@link dev.vida.config.Ajustes} и умеет извлекать типизированные значения,
  * применяя валидацию из {@link Ajuste}.
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public final class DefaultAjustesTipados implements AjustesTipados {
 
     private static final Log LOG = Log.of(DefaultAjustesTipados.class);

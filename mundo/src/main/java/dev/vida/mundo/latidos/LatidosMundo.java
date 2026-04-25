@@ -10,14 +10,15 @@ import dev.vida.mundo.Mundo;
 import java.util.Objects;
 
 /**
- * Набор стандартных world-латидосов.
+ * Набор стандартных world-латидосов: {@link MundoCargado}, {@link ChunkCargado}, {@link ChunkDescargado},
+ * {@link Tick}, {@link NocheAmanece}.
  */
-@ApiStatus.Preview("mundo")
+@ApiStatus.Stable
 public final class LatidosMundo {
 
     private LatidosMundo() {}
 
-    @ApiStatus.Preview("mundo")
+    @ApiStatus.Stable
     public record MundoCargado(Mundo mundo, boolean recienCreado) {
         public static final Latido<MundoCargado> TIPO =
                 Latido.de("vida:mundo_cargado", MundoCargado.class);
@@ -27,7 +28,7 @@ public final class LatidosMundo {
         }
     }
 
-    @ApiStatus.Preview("mundo")
+    @ApiStatus.Stable
     public record ChunkCargado(Mundo mundo, int chunkX, int chunkZ, boolean completo) {
         public static final Latido<ChunkCargado> TIPO =
                 Latido.de("vida:chunk_cargado", ChunkCargado.class);
@@ -37,7 +38,17 @@ public final class LatidosMundo {
         }
     }
 
-    @ApiStatus.Preview("mundo")
+    @ApiStatus.Stable
+    public record ChunkDescargado(Mundo mundo, int chunkX, int chunkZ) {
+        public static final Latido<ChunkDescargado> TIPO =
+                Latido.de("vida:chunk_descargado", ChunkDescargado.class);
+
+        public ChunkDescargado {
+            Objects.requireNonNull(mundo, "mundo");
+        }
+    }
+
+    @ApiStatus.Stable
     public record Tick(Mundo mundo, long tickActual, long tiempoDelDia) {
         public static final Latido<Tick> TIPO =
                 Latido.de("vida:mundo_tick", Tick.class);
@@ -53,7 +64,7 @@ public final class LatidosMundo {
         }
     }
 
-    @ApiStatus.Preview("mundo")
+    @ApiStatus.Stable
     public record NocheAmanece(
             Mundo mundo,
             long tiempoAnterior,

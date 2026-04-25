@@ -16,7 +16,7 @@ import java.util.Optional;
  * @param <T> тип значения
  */
 @FunctionalInterface
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public interface Validador<T> {
 
     Optional<String> validar(T valor);

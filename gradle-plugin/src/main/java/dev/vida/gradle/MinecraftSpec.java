@@ -20,6 +20,7 @@ import org.gradle.api.provider.Property;
  *     mappings {
  *         proguard.set(file("mappings/mojang_1_21_1.txt"))
  *     }
+ *     platformProfile.set("legacy-121/1.21.1")
  * }
  * }</pre>
  */
@@ -42,6 +43,13 @@ public abstract class MinecraftSpec {
 
     /** Путь к оригинальному серверному jar. */
     public abstract RegularFileProperty getServerJar();
+
+    /**
+     * Идентификатор профиля платформы Vida для рантайма (например
+     * {@code legacy-121/1.21.1}). Пробрасывается как
+     * {@code -Dvida.platformProfile} при {@code vidaRun}.
+     */
+    public abstract Property<String> getPlatformProfile();
 
     public MappingsSpec getMappings() {
         return mappings;

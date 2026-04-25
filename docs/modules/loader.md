@@ -50,16 +50,17 @@ try (VidaBoot.Handle handle = VidaBoot.boot(options)) {
 
 Полный сценарий старта задокументирован в [architecture/bootstrap.md](../architecture/bootstrap.md#bootsequence). Короткая версия:
 
-1. Парсим `BootOptions`.
+1. Парсим `BootOptions`; опционально загружаем [профиль платформы](./platform-profiles.md) (`platformProfile`, JVM-свойства).
 2. Сканируем директорию модов (`discovery`).
 3. Читаем манифесты (`manifest`).
-4. Резолвим зависимости (`resolver`), предварительно публикуя [синтетические провайдеры платформы](#синтетические-провайдеры-платформы).
-5. Собираем `MorphIndex: target → List<MorphSource>` — сюда же автоматически попадают [платформенные морфы](#платформенные-морфы).
-6. Читаем data-driven prototype-контент (`custom["vida:dataDriven"]` + datapack JSON).
-7. Регистрируем `VidaClassTransformer` в `Instrumentation` (или через `TransformingClassLoader`).
-8. Устанавливаем глобальный `LatidoBus` (`LatidoGlobal`) и мост `VanillaBridge`, чтобы платформенные морфы могли публиковать события.
-9. Вызываем entrypoint'ы резолвнутых модов: `preLaunch` → `main` → `client` → `server`.
-10. Передаём управление игре.
+4. Резолвим зависимости (`resolver`), предварительно публикуя [синтетические провайдеры платформы](#синтетические-провайдеры-платформы) (версия `minecraft` может подставиться из профиля, если не задана в опциях).
+5. Читаем data-driven prototype-контент (`custom["vida:dataDriven"]` + datapack JSON) по резолвнутым модам.
+6. Собираем `MorphIndex: target → List<MorphSource>` — [платформенные морфы](#платформенные-морфы) по профилю и морфы модов (с учётом `custom.vida.platformProfileIds`).
+7. Загружаем Cartografía (client mappings) по стратегии профиля или из каталога игры.
+8. Регистрируем `VidaClassTransformer` в `Instrumentation` (или через `TransformingClassLoader`).
+9. Устанавливаем глобальный `LatidoBus` (`LatidoGlobal`) и **PlatformBridge** (`PlatformBridgeSupport` по FQCN из профиля или `VanillaBridge`).
+10. Вызываем entrypoint'ы резолвнутых модов: `preLaunch` → `main` → `client` → `server`.
+11. Собираем `VidaEnvironment` и возвращаем отчёт; дальше управление получает обычный `main` Minecraft.
 
 ## Синтетические провайдеры платформы
 
@@ -68,7 +69,7 @@ try (VidaBoot.Handle handle = VidaBoot.boot(options)) {
 | id          | Источник версии                                                             | Поведение                                          |
 |-------------|-----------------------------------------------------------------------------|----------------------------------------------------|
 | `vida`      | `BootOptions#vidaVersion()` → `META-INF/vida/loader-version.properties`    | Публикуется всегда; fallback `0.0.0` если ресурса нет. |
-| `minecraft` | `BootOptions#minecraftVersion()`                                            | Публикуется только если версия задана.             |
+| `minecraft` | `BootOptions#minecraftVersion()` → иначе `gameVersion` из активного профиля → иначе `version.json` на classpath | Публикуется, если версия удаётся разрешить.        |
 | `java`      | `System.getProperty("java.specification.version")`                          | Публикуется всегда; нормализация `"21"` → `21.0.0`. |
 
 Если реальный мод объявил `id` из этого списка, синтетика для такого `id` пропускается — реальный мод выигрывает, без конфликта.
@@ -104,19 +105,19 @@ Vida публикует базовые платформенные события
 | `MinecraftTickMorph`       | `net.minecraft.client.Minecraft#tick()V`        | `LatidoPulso` — каждый клиентский тик.                           |
 | `GuiRenderMorph`           | `net.minecraft.client.gui.Gui#render(GuiGraphics,F)V` | `LatidoRenderHud` — каждый HUD-кадр.                       |
 
-Фактический диспатч делегирован в `PlatformBridge`. Дефолтная реализация `VanillaBridge` устанавливается `BootSequence` после публикации глобальной шины и использует reflection, чтобы не тащить Minecraft в compile-classpath. Тесты и инструменты могут подменять мост через `VanillaBridge.install(myBridge)` (после `resetForTests()`).
+Фактический диспатч делегирован в `PlatformBridge`. Дефолтная реализация **`VanillaBridge`** ставится `BootSequence` после публикации глобальной шины: Minecraft по-прежнему **не** в compile-classpath модуля `:loader`, но в рантайме вызовы идут через **закэшированные `MethodHandle`** (`Minecraft` / `Window` / `Level`, `GuiGraphics.fill`), без **`Method.invoke`** на каждый тик или HUD-кадр. Тесты могут подменять мост через `VanillaBridge.install(myBridge)` (после `resetForTests()`).
 
 `requireTarget = false` у обоих морфов: если целевой класс отсутствует (сервер-сайд, обфусцированный JAR, другая версия MC) — морф просто пропускается, ошибок в логе нет. Любой мод, подписавшийся на `LatidoPulso` через `@OyenteDeTick` или на `LatidoRenderHud` напрямую, начинает получать события без собственных MC-морфов.
 
 Compile-only стабы нужных MC-классов (`net.minecraft.client.gui.GuiGraphics`) лежат в отдельном sourceSet `mcStubs` модуля `:loader` и явно исключаются из `agentJar` (`exclude "net/minecraft/**"`).
 
-## Data-driven prototype (0.6.0)
+## Data-driven контент (Fuente, 2.0)
 
-В `dev.vida.loader.fuente` добавлен ранний прототип declarative-content загрузки:
+Парсинг декларативного контента вынесен в модуль [`:fuente`](./fuente.md) (`dev.vida.fuente`):
 
 - `FuentePrototipoParser`
 - `FuenteContenidoMod`
-- `FuenteBloque`, `FuenteObjeto`, `FuenteRecetaShaped`
+- `FuenteBloque`, `FuenteObjeto`, `FuenteRecetaShaped`, `FuenteLootTable`
 
 Если в `vida.mod.json` присутствует:
 
@@ -134,6 +135,7 @@ Compile-only стабы нужных MC-классов (`net.minecraft.client.gu
 - `<root>/bloques/*.json`
 - `<root>/objetos/*.json`
 - `<root>/recipes/*.json` (только `type = "vida:shaped"`)
+- `<root>/loot_tables/**/*.json` — минимальный разбор пулов (см. [manifest-schema.md](../reference/manifest-schema.md))
 
 Разобранный snapshot публикуется в `VidaEnvironment.fuenteDataDriven()`.
 
@@ -168,7 +170,7 @@ public byte[] transform(ClassLoader loader, String name, Class<?> cls,
 
 ## BrandingEscultor
 
-Внутренний `Escultor`, переписывающий format-строку F3-дебаг-экрана. Пример низкоуровневой модификации байткода без `@VifadaMorph`. Живёт в `dev.vida.loader.internal.BrandingEscultor`.
+Встроенный `Escultor`, переписывающий строку F3-дебаг-оверлея Minecraft. Пример низкоуровневой модификации байткода без `@VifadaMorph`. Класс **`dev.vida.escultores.BrandingEscultor`** (модуль `:escultores`, `@Stable`); загрузчик регистрирует singleton до Escultor'ов из поля манифеста [`escultores`](./escultores.md).
 
 Логика:
 

@@ -28,23 +28,41 @@ public final class InstallerSupport {
     private InstallerSupport() {}
 
     /**
-     * Извлекает embedded {@code /loader/loader.jar} из classpath installer'а
-     * в указанный файл, возвращая SHA-1 и размер.
-     *
-     * <p>При {@code dryRun=true} файл не пишется, но sha1/size считаются
-     * (прогоняем stream в {@link OutputStream#nullOutputStream()}).
-     *
-     * @throws IOException если ресурс отсутствует или запись не удалась
+     * Как {@link #extractEmbeddedLoader(Path, boolean, Path)} с каталогом кэша из
+     * переменной окружения {@code VIDA_INSTALL_CACHE} или свойства JVM
+     * {@code vida.install.cache}.
      */
     public static McArtifacts.Sha1Result extractEmbeddedLoader(Path target, boolean dryRun)
             throws IOException {
-        try (InputStream in = InstallerCore.class
-                .getResourceAsStream(InstallerCore.EMBEDDED_LOADER_RESOURCE)) {
-            if (in == null) {
-                throw new IOException(
-                        "Embedded loader resource missing: " + InstallerCore.EMBEDDED_LOADER_RESOURCE
-                        + ". The installer jar was built incorrectly.");
+        return extractEmbeddedLoader(target, dryRun, resolverCacheDir());
+    }
+
+    /**
+     * Извлекает embedded {@code /loader/loader.jar}. Если задан {@code cacheDir} и там уже
+     * есть файл с тем же SHA-1, что у ресурса, выполняется копирование из кэша (offline).
+     */
+    public static McArtifacts.Sha1Result extractEmbeddedLoader(Path target, boolean dryRun,
+            Path cacheDir)
+            throws IOException {
+        McArtifacts.Sha1Result fingerprint;
+        try (InputStream in = openLoaderStream()) {
+            fingerprint = McArtifacts.copyWithSha1(in, OutputStream.nullOutputStream());
+        }
+
+        if (!dryRun && cacheDir != null) {
+            Files.createDirectories(cacheDir);
+            Path cached = cacheDir.resolve("loader-" + fingerprint.sha1Hex() + ".jar");
+            if (Files.isRegularFile(cached)) {
+                McArtifacts.Sha1Result disk = McArtifacts.sha1Of(cached);
+                if (disk.sha1Hex().equalsIgnoreCase(fingerprint.sha1Hex())) {
+                    Files.createDirectories(target.getParent());
+                    Files.copy(cached, target, StandardCopyOption.REPLACE_EXISTING);
+                    return McArtifacts.sha1Of(target);
+                }
             }
+        }
+
+        try (InputStream in = openLoaderStream()) {
             if (dryRun) {
                 return McArtifacts.copyWithSha1(in, OutputStream.nullOutputStream());
             }
@@ -61,8 +79,38 @@ public final class InstallerSupport {
             } catch (IOException atomicFail) {
                 Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING);
             }
+
+            if (cacheDir != null && Files.isRegularFile(target)) {
+                try {
+                    Files.createDirectories(cacheDir);
+                    Path cached = cacheDir.resolve("loader-" + fingerprint.sha1Hex() + ".jar");
+                    Files.copy(target, cached, StandardCopyOption.REPLACE_EXISTING);
+                } catch (IOException ignore) {
+                    // cache is best-effort
+                }
+            }
             return result;
         }
+    }
+
+    private static Path resolverCacheDir() {
+        String env = System.getenv("VIDA_INSTALL_CACHE");
+        if (env != null && !env.isBlank()) {
+            return Path.of(env.trim());
+        }
+        String prop = System.getProperty("vida.install.cache", "");
+        return prop.isBlank() ? null : Path.of(prop.trim());
+    }
+
+    private static InputStream openLoaderStream() throws IOException {
+        InputStream in = InstallerCore.class
+                .getResourceAsStream(InstallerCore.EMBEDDED_LOADER_RESOURCE);
+        if (in == null) {
+            throw new IOException(
+                    "Embedded loader resource missing: " + InstallerCore.EMBEDDED_LOADER_RESOURCE
+                    + ". The installer jar was built incorrectly.");
+        }
+        return in;
     }
 
     /**

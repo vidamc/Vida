@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicLong;
  *       {@link #susurro(Susurro, Prioridad, Etiqueta)} — по приоритету.</li>
  * </ul>
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 @FunctionalInterface
 public interface Ejecutor {
 

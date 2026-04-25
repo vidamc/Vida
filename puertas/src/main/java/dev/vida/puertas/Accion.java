@@ -17,7 +17,7 @@ import dev.vida.core.ApiStatus;
  *   <li>{@link #MUTABLE} — снять {@code final} с поля, доступность не меняет.</li>
  * </ul>
  */
-@ApiStatus.Preview("puertas")
+@ApiStatus.Stable
 public enum Accion {
     ACCESIBLE,
     EXTENSIBLE,

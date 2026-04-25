@@ -19,7 +19,7 @@ import java.lang.annotation.Target;
  * зарезервированы для расширенных типов точек ({@link InjectionPoint#INVOKE},
  * {@link InjectionPoint#FIELD} и пр.).
  */
-@ApiStatus.Preview("vifada")
+@ApiStatus.Stable
 @Retention(RetentionPolicy.CLASS)
 @Target({})
 public @interface VifadaAt {

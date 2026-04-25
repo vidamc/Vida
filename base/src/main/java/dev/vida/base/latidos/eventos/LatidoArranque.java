@@ -17,7 +17,7 @@ import java.util.Objects;
  * использовать его для операций, требующих полного реестра других модов
  * (например, поиска опциональных интеграций).
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public record LatidoArranque(Instant momento, int modsCargados) {
 
     public LatidoArranque {

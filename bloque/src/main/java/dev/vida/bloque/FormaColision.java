@@ -37,7 +37,7 @@ import java.util.Objects;
  *           FormaColision.aabb(0, 0.5, 0, 1, 1.0, 0.5));
  * }</pre>
  */
-@ApiStatus.Preview("bloque")
+@ApiStatus.Stable
 public final class FormaColision {
 
     /** Ограничивающий ящик. Координаты в диапазоне [0..1]. */

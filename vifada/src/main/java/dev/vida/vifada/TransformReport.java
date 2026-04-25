@@ -16,15 +16,28 @@ import java.util.Objects;
  * ошибкой, и {@code non-null} даже при частичном успехе (когда часть
  * морфов не удалось применить, но это были «silent» варианты).
  */
-@ApiStatus.Preview("vifada")
+@ApiStatus.Stable
 public record TransformReport(
         byte[] bytes,
         List<String> appliedMorphs,
-        List<VifadaError> errors) {
+        List<VifadaError> errors,
+        List<MorphSkip> skippedMorphs) {
 
-    public TransformReport {
-        appliedMorphs = List.copyOf(Objects.requireNonNull(appliedMorphs, "appliedMorphs"));
-        errors        = List.copyOf(Objects.requireNonNull(errors, "errors"));
+    /** @param skippedMorphs может быть {@code null} (трактуется как пустой список) */
+    public TransformReport(
+            byte[] bytes,
+            List<String> appliedMorphs,
+            List<VifadaError> errors,
+            List<MorphSkip> skippedMorphs) {
+        this.appliedMorphs = List.copyOf(Objects.requireNonNull(appliedMorphs, "appliedMorphs"));
+        this.errors = List.copyOf(Objects.requireNonNull(errors, "errors"));
+        this.skippedMorphs =
+                skippedMorphs == null ? List.of() : List.copyOf(skippedMorphs);
+        this.bytes = bytes;
+    }
+
+    public TransformReport(byte[] bytes, List<String> appliedMorphs, List<VifadaError> errors) {
+        this(bytes, appliedMorphs, errors, List.of());
     }
 
     public boolean isOk()                    { return bytes != null && errors.isEmpty(); }

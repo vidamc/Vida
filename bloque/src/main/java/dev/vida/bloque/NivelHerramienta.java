@@ -17,7 +17,7 @@ import dev.vida.core.ApiStatus;
  * уровня {@code this}. Правило vanilla: инструмент вставляется в монотонно
  * возрастающий ряд, уровни выше перекрывают нижние.
  */
-@ApiStatus.Preview("bloque")
+@ApiStatus.Stable
 public enum NivelHerramienta {
 
     /** Ломается рукой. */

@@ -51,7 +51,7 @@
  * изменениями. Регистрируется в {@code vifada} как Escultor (hook —
  * {@code dev.vida.vifada.Transformer.registrarEscultor}).
  */
-@ApiStatus.Preview("puertas")
+@ApiStatus.Stable
 package dev.vida.puertas;
 
 import dev.vida.core.ApiStatus;

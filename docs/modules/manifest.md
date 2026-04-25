@@ -67,9 +67,11 @@ switch (r.asEither()) {
 Плагин `dev.vida.mod` (см. [gradle-plugin.md](./gradle-plugin.md)) содержит задачи:
 
 - `vidaGenerateManifest` — рендерит `vida.mod.json` из DSL в `build/generated/vida/resources`.
-- `vidaValidateManifest` — прогоняет полученный JSON через `ManifestParser.parse(...)`. Если результат `Err`, сборка падает до компиляции Kotlin/Java.
+- `vidaValidateManifest` — прогоняет полученный JSON через `ManifestParser.parse(...)`. Если результат `Err`, сборка падает до компиляции Kotlin/Java. При включённом **`vida:dataDriven`** дополнительно проверяется наличие каталога datapack под `src/main/resources` (см. [gradle-plugin.md](./gradle-plugin.md#vidavalidatemanifest)).
 
 Это даёт моддеру фидбэк «на красном», а не в рантайме, и исключает невалидные JAR'ы в продакшене.
+
+`ModManifest` включает список **`escultores`** (`EscultorDeclaracion`) — см. [reference/manifest-schema.md](../reference/manifest-schema.md#escultores--optional-array).
 
 ## `VifadaConfig` и `ModDependencies`
 

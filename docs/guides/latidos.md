@@ -1,6 +1,6 @@
 # Latidos — события
 
-Высокопроизводительная event-шина Vida. Диспетчеры генерируются через `LambdaMetafactory` (без рефлексии на hot-path), обработчики хранятся в плоских массивах, аллокаций на `publicar(...)` — ноль для некапчерящих lambda.
+Высокопроизводительная event-шина Vida. Реализация по умолчанию — **`DefaultLatidoBus`**: при `emitir` берётся снимок подписчиков и вызывается **`Oyente.manejar`** как обычный виртуальный вызов (**без `Method.invoke`** на горячем пути). Подписки через **`LatidoRegistrador`** после одноразового сканирования аннотаций по возможности используют **`MethodHandle`** для вызова методов экземпляра.
 
 Базовые типы — в [`modules/base.md`](../modules/base.md#devvidabaselatidos). Здесь — практика.
 
@@ -36,20 +36,9 @@ enum Fase      { ANTES, PRINCIPAL, DESPUES }            // подпорядок 
 
 Обработчики сортируются сначала по `Prioridad`, потом по `Fase`. `MONITOR` предназначен для логгирования/наблюдения — он видит финальное состояние события (включая флаг отмены), но сам его не меняет.
 
-## Фильтры
+## Условная доставка
 
-Подписка может быть ограничена по условию — не вызывать обработчик, если условие не выполнено:
-
-```java
-ctx.latidos().suscribirSi(
-    LatidoPulso.TIPO,
-    Prioridad.NORMAL,
-    pulso -> pulso.tickActual() % 20 == 0,
-    this::onSecondly
-);
-```
-
-Под капотом фильтр компилируется в отдельный диспетчер — проверка происходит до виртуального вызова обработчика и обычно JIT-инлайнится.
+Отдельного `suscribirSi` в API нет: оберните логику в `Oyente`, который ранним `return` пропускает ненужные события (или вынесите условие в тело `onPulse`).
 
 ## Отписка
 
@@ -64,15 +53,15 @@ sub.cancelar();
 ## Создание своего события
 
 ```java
-public record EventoExplosion(Bloque bloque, Punto centro, float fuerza) implements Latido {
-    public static final LatidoTipo<EventoExplosion> TIPO =
-        LatidoTipo.of("miaventura:explosion");
+public record EventoExplosion(Bloque bloque, Punto centro, float fuerza) {
+    public static final Latido<EventoExplosion> TIPO =
+            Latido.de("miaventura:explosion", EventoExplosion.class);
 }
 ```
 
 Правила:
 
-- `record` реализует `Latido`.
+- тип события — `record` или неизменяемый класс;
 - `TIPO` — `public static final`, имя в формате `namespace:event_name` (валидируется).
 - Если событие `cancelable`, добавьте флаг и API для отмены:
 
@@ -88,7 +77,7 @@ public final class EventoExplosion implements LatidoCancelable {
 Публикация:
 
 ```java
-ctx.latidos().publicar(new EventoExplosion(bloque, centro, 4.0f));
+ctx.latidos().emitir(EventoExplosion.TIPO, new EventoExplosion(bloque, centro, 4.0f));
 ```
 
 ## Thread-affinity
@@ -139,28 +128,22 @@ ctx.latidos().suscribir(
 
 ## Производительность
 
-### Zero-alloc для простых lambda
+### Аллокации и лямбды
 
-Если ваш обработчик не захватывает переменные:
+Некапчерящие лямбды (`pulso -> { ... }` без замыкания) компилятором обычно превращаются в **один** экземпляр `Oyente`; на каждом `emitir` шина не делает рефлексии и не разворачивает `Method[]` — только виртуальные вызовы по снимку списка.
 
-```java
-ctx.latidos().suscribir(LatidoPulso.TIPO, Prioridad.NORMAL, pulso -> { /* ... */ });
-```
-
-`LambdaMetafactory` создаёт singleton-реализацию интерфейса. Аллокаций на каждом `publicar(...)` — ноль. C2 инлайнит.
-
-Если обработчик захватывает `this` (как в `this::onPulse`) — происходит одна аллокация на момент подписки; дальше — ноль.
+Ссылка на метод (`this::onPulse`) захватывает получатель один раз при подписке.
 
 ### Fan-out
 
-Стандартные события Vida (`LatidoPulso`, `LatidoArranque`, etc.) на 150 модов + 10 подписчиков каждый раз на главном потоке дают < 200 нс на `publicar(...)`. Это измерено JMH-бенчами в `bench/`.
+Целевые порядки величины для `emitir` на типичной машине — в [architecture/performance.md](../architecture/performance.md); регрессии отслеживаются JMH в `bench/`.
 
 ## Стандартные события Vida
 
 | Тип | Когда публикуется |
 |-----|-------------------|
 | `LatidoArranque` | клиент/сервер завершил инициализацию, готов принимать подключения |
-| `LatidoPulso` | каждый server-tick (20 раз в секунду) |
+| `LatidoPulso` | на клиенте — каждый client-tick через платформенный мост (`MinecraftTickMorph`); иные источники — по контракту мода/сервера |
 | `LatidoParada` | начало shutdown |
 | `LatidoConfiguracionRecargada` | горячая перезагрузка `Ajustes` |
 

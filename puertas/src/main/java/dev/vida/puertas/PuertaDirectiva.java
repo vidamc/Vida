@@ -32,7 +32,7 @@ import java.util.Optional;
  * @param descriptor     JVM-descriptor члена, или {@link Optional#empty()} для CLASE
  * @param linea          номер строки в исходнике (1-based) — для сообщений об ошибках
  */
-@ApiStatus.Preview("puertas")
+@ApiStatus.Stable
 public record PuertaDirectiva(
         Accion accion,
         Objetivo objetivo,

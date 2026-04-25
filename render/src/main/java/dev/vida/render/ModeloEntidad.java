@@ -11,7 +11,7 @@ import java.util.Objects;
 /**
  * Декларативная render-модель сущности.
  */
-@ApiStatus.Preview("render")
+@ApiStatus.Stable
 public record ModeloEntidad(Identifier malla, Identifier texturaPrincipal) {
 
     public static final Identifier MALLA_SIMPLE = Identifier.of("vida", "entity/simple");

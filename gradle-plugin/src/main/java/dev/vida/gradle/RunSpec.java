@@ -17,6 +17,7 @@ import org.gradle.api.provider.Property;
  *     jvmArgs.addAll("-Xmx4G", "-XX:+UseZGC")
  *     args.addAll("--accessToken", "dev", "--username", "Dev")
  *     workingDir.set(layout.projectDirectory.dir("run"))
+ *     accessDeniedIds.addAll("cheat_mod") // -Dvida.accessDenied=… при vidaRun
  * }
  * }</pre>
  */
@@ -39,4 +40,18 @@ public interface RunSpec {
 
     /** Подключать ли Vida как Java Agent (иначе — через программный {@code VidaBoot}). */
     Property<Boolean> getAgent();
+
+    /**
+     * Id модов, запрещённых политикой резолвера при этом запуске (передаётся как
+     * {@code -Dvida.accessDenied=id1,id2}).
+     */
+    ListProperty<String> getAccessDeniedIds();
+
+    /**
+     * Режим разработки: включает отслеживание изменений классов и сброс
+     * {@link dev.vida.base.catalogo.CatalogoManejador} (без полного перезапуска JVM).
+     *
+     * <p>Передаёт {@code -Dvida.dev.hotReload=true} и путь наблюдения для watcher.
+     */
+    Property<Boolean> getHotReload();
 }

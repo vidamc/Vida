@@ -26,7 +26,7 @@ import java.util.Objects;
  * <p>Equals/hashCode учитывают только пару идентификаторов — тип параметра
  * стирается в JVM, что соответствует стандартной Java-семантике.
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public final class CatalogoClave<T> {
 
     private final Identifier reestroId;

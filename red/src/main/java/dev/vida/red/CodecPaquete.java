@@ -9,10 +9,15 @@ import dev.vida.core.ApiStatus;
 /**
  * Кодек wire-сериализации одного типа пакета.
  */
-@ApiStatus.Preview("red")
+@ApiStatus.Stable
 public interface CodecPaquete<T extends Record> {
 
     byte[] codificar(T paquete);
 
     T decodificar(byte[] payload);
+
+    /** Límite duro del tamaño del payload en bytes (wire). */
+    default int maxCargaBytes() {
+        return 1_048_576;
+    }
 }

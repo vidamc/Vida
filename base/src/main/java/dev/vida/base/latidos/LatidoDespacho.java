@@ -18,7 +18,7 @@ import java.util.Objects;
  *                  {@link LatidoCancelable#cancelar()}. Для не-отменяемых
  *                  событий всегда {@code false}.
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public record LatidoDespacho(int recibidos, List<Throwable> errores, boolean cancelado) {
 
     public LatidoDespacho {

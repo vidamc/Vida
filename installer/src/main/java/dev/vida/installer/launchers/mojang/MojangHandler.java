@@ -17,6 +17,7 @@ import dev.vida.installer.mc.JsonTree;
 import dev.vida.installer.mc.LauncherProfilesPatcher;
 import dev.vida.installer.mc.McArtifacts;
 import dev.vida.installer.mc.McLayout;
+import dev.vida.installer.mc.VidaInstallerJvm;
 import dev.vida.installer.mc.VersionJson;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -231,6 +232,7 @@ public final class MojangHandler implements LauncherHandler {
         String conf  = layout.vidaConfigDir().toAbsolutePath().toString();
         String mcVer = layout.minecraftVersion();
         String lvVer = layout.loaderVersion();
+        String vidaJvm = VidaInstallerJvm.spaceSeparatedInstallerJvmProps(mcVer, lvVer);
         if (windows) {
             return """
                     @echo off
@@ -240,15 +242,15 @@ public final class MojangHandler implements LauncherHandler {
                     java -javaagent:"%AGENT%" ^
                          -Dvida.mods="%MODS%" ^
                          -Dvida.config="%CONF%" ^
-                         -Dvida.loader.version=%LV% ^
-                         -Dvida.minecraft.version=%MC% ^
+                         %VIDA_JVM% ^
                          -cp %%1 %%2 %%*
                     """
-                    .replace("%MC%",    mcVer)
-                    .replace("%LV%",    lvVer)
+                    .replace("%MC%", mcVer)
+                    .replace("%LV%", lvVer)
+                    .replace("%VIDA_JVM%", batLineBreak(vidaJvm))
                     .replace("%AGENT%", agent)
-                    .replace("%MODS%",  mods)
-                    .replace("%CONF%",  conf);
+                    .replace("%MODS%", mods)
+                    .replace("%CONF%", conf);
         }
         return """
                 #!/usr/bin/env sh
@@ -260,15 +262,40 @@ public final class MojangHandler implements LauncherHandler {
                     -javaagent:'%AGENT%' \\
                     -Dvida.mods='%MODS%' \\
                     -Dvida.config='%CONF%' \\
-                    -Dvida.loader.version=%LV% \\
-                    -Dvida.minecraft.version=%MC% \\
+                    %VIDA_JVM% \\
                     -cp "$1" "$2" "$@"
                 """
-                .replace("%MC%",    mcVer)
-                .replace("%LV%",    lvVer)
+                .replace("%MC%", mcVer)
+                .replace("%LV%", lvVer)
+                .replace("%VIDA_JVM%", shellLineBreak(vidaJvm))
                 .replace("%AGENT%", agent)
-                .replace("%MODS%",  mods)
-                .replace("%CONF%",  conf);
+                .replace("%MODS%", mods)
+                .replace("%CONF%", conf);
+    }
+
+    /** Добавляет переносы после каждого JVM-токена из {@code props} для читаемости bat. */
+    private static String batLineBreak(String props) {
+        StringBuilder sb = new StringBuilder();
+        for (String tok : props.split(" ")) {
+            if (tok.isEmpty()) continue;
+            if (sb.length() > 0) {
+                sb.append(" ^").append(System.lineSeparator()).append("                         ");
+            }
+            sb.append(tok);
+        }
+        return sb.toString();
+    }
+
+    private static String shellLineBreak(String props) {
+        StringBuilder sb = new StringBuilder();
+        for (String tok : props.split(" ")) {
+            if (tok.isEmpty()) continue;
+            if (sb.length() > 0) {
+                sb.append(" \\").append(System.lineSeparator()).append("                    ");
+            }
+            sb.append(tok);
+        }
+        return sb.toString();
     }
 
     // ----------------------------------------------------------------

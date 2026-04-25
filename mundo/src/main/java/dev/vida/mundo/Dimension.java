@@ -11,7 +11,7 @@ import java.util.Objects;
 /**
  * Value-type измерения мира.
  */
-@ApiStatus.Preview("mundo")
+@ApiStatus.Stable
 public record Dimension(
         Identifier id,
         boolean natural,
@@ -37,5 +37,25 @@ public record Dimension(
 
     public static Dimension de(String id, boolean natural, boolean permiteCama, boolean techoFijo) {
         return new Dimension(Identifier.parse(id), natural, permiteCama, techoFijo);
+    }
+
+    /**
+     * Типичные вертикальные границы для профиля Vanilla 1.21.x по {@link #id}.
+     *
+     * <p>Для пользовательских измерений без известного профиля возвращаются те же границы, что и у
+     * {@link #OVERWORLD} — наиболее широкий типичный столбец; рантайм может уточнять через
+     * переопределение {@link Mundo#limitesVerticales()}.
+     */
+    public LimitesVerticales limitesVerticalesPredeterminados() {
+        if (id.equals(NETHER.id())) {
+            return LimitesVerticales.netherVanilla121();
+        }
+        if (id.equals(OVERWORLD.id())) {
+            return LimitesVerticales.overworldVanilla121();
+        }
+        if (id.equals(END.id())) {
+            return LimitesVerticales.endVanilla121();
+        }
+        return LimitesVerticales.overworldVanilla121();
     }
 }

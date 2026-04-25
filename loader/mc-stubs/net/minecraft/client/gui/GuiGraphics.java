@@ -15,6 +15,20 @@ package net.minecraft.client.gui;
  */
 public class GuiGraphics {
 
+    /** Stub — реальная реализация в клиенте. */
+    public net.minecraft.client.gui.Font getFont() {
+        return null;
+    }
+
+    /** Stub — реальная реализация в клиенте. */
+    public void drawString(
+            net.minecraft.client.gui.Font font,
+            String text,
+            int x,
+            int y,
+            int color,
+            boolean dropShadow) {}
+
     /**
      * Draws a filled rectangle.
      *

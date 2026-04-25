@@ -22,7 +22,7 @@ import java.util.Optional;
  * <p>Поведение совпадает с vanilla {@code DataComponentMap}: один ключ —
  * один компонент; переопределение заменяет предыдущее значение.
  */
-@ApiStatus.Preview("objeto")
+@ApiStatus.Stable
 public final class MapaComponentes {
 
     private static final MapaComponentes VACIO = new MapaComponentes(Map.of());

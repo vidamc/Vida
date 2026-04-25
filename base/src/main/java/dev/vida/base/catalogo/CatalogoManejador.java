@@ -32,7 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *   ctx.catalogos().congelarTodo();
  * }</pre>
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public final class CatalogoManejador {
 
     private final ConcurrentHashMap<Identifier, DefaultCatalogo<?>> catalogos = new ConcurrentHashMap<>();
@@ -82,6 +82,18 @@ public final class CatalogoManejador {
     /** Сбрасывает всё (для тестов). */
     public void limpiar() {
         catalogos.clear();
+    }
+
+    /**
+     * Сбрасывает открытые реестры в процессе разработки с
+     * {@code -Dvida.dev.hotReload=true} (см. {@code vidaRun} / hot-reload).
+     */
+    public void reiniciarParaHotReloadDesarrollo() {
+        if (!Boolean.getBoolean("vida.dev.hotReload")) {
+            throw new UnsupportedOperationException(
+                    "reiniciarParaHotReloadDesarrollo requires -Dvida.dev.hotReload=true");
+        }
+        limpiar();
     }
 
     /** Иммутабельный снимок всех реестров. */

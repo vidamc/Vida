@@ -106,6 +106,77 @@ final class TestSupport {
         return cw.toByteArray();
     }
 
+    /** Целевой класс с {@code maxed(II)I}, вызывающим {@link Math#max(int, int)}. */
+    static byte[] buildMathMaxTarget(String internalName) {
+        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+        cw.visit(V21, ACC_PUBLIC, internalName, null, "java/lang/Object", null);
+        {
+            MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
+            mv.visitCode();
+            mv.visitVarInsn(ALOAD, 0);
+            mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
+            mv.visitInsn(RETURN);
+            mv.visitMaxs(0, 0);
+            mv.visitEnd();
+        }
+        {
+            MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "maxed", "(II)I", null, null);
+            mv.visitCode();
+            mv.visitVarInsn(ILOAD, 1);
+            mv.visitVarInsn(ILOAD, 2);
+            mv.visitMethodInsn(INVOKESTATIC, "java/lang/Math", "max", "(II)I", false);
+            mv.visitInsn(IRETURN);
+            mv.visitMaxs(0, 0);
+            mv.visitEnd();
+        }
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    /** Как {@link #buildSimpleTarget}, плюс {@code bump()V} увеличивает {@code counter}. */
+    static byte[] buildTargetTickAndBump(String internalName) {
+        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+        cw.visit(V21, ACC_PUBLIC, internalName, null, "java/lang/Object", null);
+        cw.visitField(ACC_PUBLIC, "counter", "I", null, null).visitEnd();
+        {
+            MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
+            mv.visitCode();
+            mv.visitVarInsn(ALOAD, 0);
+            mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
+            mv.visitInsn(RETURN);
+            mv.visitMaxs(0, 0);
+            mv.visitEnd();
+        }
+        {
+            MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "tick", "()V", null, null);
+            mv.visitCode();
+            mv.visitVarInsn(ALOAD, 0);
+            mv.visitVarInsn(ALOAD, 0);
+            mv.visitFieldInsn(GETFIELD, internalName, "counter", "I");
+            mv.visitInsn(ICONST_1);
+            mv.visitInsn(IADD);
+            mv.visitFieldInsn(PUTFIELD, internalName, "counter", "I");
+            mv.visitInsn(RETURN);
+            mv.visitMaxs(0, 0);
+            mv.visitEnd();
+        }
+        {
+            MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "bump", "()V", null, null);
+            mv.visitCode();
+            mv.visitVarInsn(ALOAD, 0);
+            mv.visitVarInsn(ALOAD, 0);
+            mv.visitFieldInsn(GETFIELD, internalName, "counter", "I");
+            mv.visitInsn(ICONST_1);
+            mv.visitInsn(IADD);
+            mv.visitFieldInsn(PUTFIELD, internalName, "counter", "I");
+            mv.visitInsn(RETURN);
+            mv.visitMaxs(0, 0);
+            mv.visitEnd();
+        }
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
     // =================================================================
     //                        BUILDER: MORPH CLASS
     // =================================================================
@@ -191,6 +262,62 @@ final class TestSupport {
             mv.visitVarInsn(ILOAD, 1);
             mv.visitVarInsn(ILOAD, 2);
             mv.visitInsn(ISUB);
+            mv.visitInsn(IRETURN);
+            mv.visitMaxs(0, 0);
+            mv.visitEnd();
+            return this;
+        }
+
+        /**
+         * {@code @VifadaMulti} — один хендлер {@code (CallbackInfo)V} на несколько void-методов.
+         */
+        MorphBuilder injectMulti(String methodName, String[] targetSpecs, InjectionPoint at,
+                                 String fieldName, boolean cancel) {
+            MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, methodName,
+                    "(" + AsmNames.CALLBACK_INFO_DESC + ")V", null, null);
+            AnnotationVisitor multi = mv.visitAnnotation(AsmNames.VIFADA_MULTI_DESC, false);
+            AnnotationVisitor arr = multi.visitArray("methods");
+            for (String s : targetSpecs) {
+                arr.visit(null, s);
+            }
+            arr.visitEnd();
+            AnnotationVisitor atAnn = multi.visitAnnotation("at", AsmNames.VIFADA_AT_DESC);
+            atAnn.visitEnum("value", AsmNames.INJECTION_POINT_DESC, at.name());
+            atAnn.visitEnd();
+            multi.visitEnd();
+
+            mv.visitCode();
+            mv.visitVarInsn(ALOAD, 0);
+            mv.visitVarInsn(ALOAD, 0);
+            mv.visitFieldInsn(GETFIELD, internal, fieldName, "I");
+            mv.visitInsn(ICONST_1);
+            mv.visitInsn(IADD);
+            mv.visitFieldInsn(PUTFIELD, internal, fieldName, "I");
+            if (cancel) {
+                mv.visitVarInsn(ALOAD, 1);
+                mv.visitMethodInsn(INVOKEVIRTUAL, AsmNames.CALLBACK_INFO_INTERNAL,
+                        "cancel", "()V", false);
+            }
+            mv.visitInsn(RETURN);
+            mv.visitMaxs(0, 0);
+            mv.visitEnd();
+            return this;
+        }
+
+        /** Статический редирект {@link Math#max} на сложение. */
+        MorphBuilder redirectMathMax(String redirectMethodName) {
+            MethodVisitor mv = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, redirectMethodName,
+                    "(II)I", null, null);
+            AnnotationVisitor rd = mv.visitAnnotation(AsmNames.VIFADA_REDIRECT_DESC, false);
+            rd.visit("method", "maxed(II)I");
+            rd.visit("invokeOwner", "java/lang/Math");
+            rd.visit("invokeName", "max");
+            rd.visit("invokeDescriptor", "(II)I");
+            rd.visitEnd();
+            mv.visitCode();
+            mv.visitVarInsn(ILOAD, 0);
+            mv.visitVarInsn(ILOAD, 1);
+            mv.visitInsn(IADD);
             mv.visitInsn(IRETURN);
             mv.visitMaxs(0, 0);
             mv.visitEnd();

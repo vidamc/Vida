@@ -4,9 +4,9 @@
 
 - Пакет: `dev.vida.red`
 - Gradle: `dev.vida:vida-red`
-- Стабильность: `@ApiStatus.Preview("red")`
+- Стабильность: `@ApiStatus.Stable`
 
-## Что есть в 0.6.0
+## Основные типы
 
 ### Маркеры направления
 
@@ -57,6 +57,10 @@ Back-pressure:
 
 - канал имеет `maxCola`;
 - при переполнении `encolar(...)` возвращает `Err(TejidoError.BackPressure)`.
+
+### Фрагментация больших payload
+
+Для сообщений, превышающих лимит одного wire-кадра, используйте **`TejidoFragmentacion`**: нарезка байтов с `fragmentId`, индексом и счётчиком, сборка через **`TejidoEnsambladorFragmentos`** (`Result<Optional<byte[]>, TejidoError>` до полного сообщения). Лимиты буфера и таймаут неполной сборки задаются при создании сборщика. См. тест `TejidoFragmentacionTest`.
 
 ### `TramaPaquete`
 

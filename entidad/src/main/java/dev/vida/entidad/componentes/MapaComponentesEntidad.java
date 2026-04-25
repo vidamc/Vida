@@ -15,7 +15,7 @@ import java.util.Optional;
 /**
  * Типизированная неизменяемая карта entity data-components.
  */
-@ApiStatus.Preview("entidad")
+@ApiStatus.Stable
 public final class MapaComponentesEntidad {
 
     private static final MapaComponentesEntidad VACIO = new MapaComponentesEntidad(Map.of());

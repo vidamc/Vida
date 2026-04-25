@@ -4,7 +4,7 @@
 
 - Пакет: `dev.vida.base`
 - Gradle: `dev.vida:vida-base`
-- Стабильность: `@ApiStatus.Preview("base")`
+- Стабильность: **`@ApiStatus.Stable`** с 1.0.0
 
 В `build.gradle.kts` мода:
 
@@ -62,11 +62,34 @@ public interface ModContext {
 
 Контекст НЕ даёт доступ к другим модам напрямую — это сознательно. Кросс-модные взаимодействия идут только через публичные API (события, реестры).
 
+### Снимок разрешённых модов (`ModulosInstaladosGlobal`)
+
+Список установленных модов как **DTO манифеста** (`dev.vida.manifest.ModManifest`) без зависимости от `dev.vida.loader` — для UI, телеметрии мода, отладки:
+
+```java
+package dev.vida.docs.codegen.modulos_instalados;
+
+import dev.vida.base.ModulosInstaladosGlobal;
+import dev.vida.manifest.ModManifest;
+import java.util.List;
+
+public final class ListarModsEjemplo {
+    private ListarModsEjemplo() {}
+
+    public static void imprimirIds() {
+        List<ModManifest> mods = ModulosInstaladosGlobal.vista();
+        for (ModManifest m : mods) {
+            System.out.println(m.id() + " " + m.version());
+        }
+    }
+}
+```
+
 ## Подпакеты
 
 ### `dev.vida.base.latidos`
 
-Высокопроизводительная система событий. Диспетчеры генерируются через `LambdaMetafactory`, без рефлексии на hot-path.
+Высокопроизводительная система событий. `DefaultLatidoBus` доставляет события прямыми вызовами `Oyente` по снимку подписчиков — **без `Method.invoke` на пути `emitir`**. `LatidoRegistrador` после сканирования аннотаций по возможности использует **`MethodHandle`** для вызова методов мода.
 
 Ключевые типы:
 
@@ -213,7 +236,7 @@ int d = ctx.ajustes().valor(RENDER_DIST);
 - `AjustesSincronizados` — настройки с авто-синхронизацией клиент↔сервер.
 - `DirectorioRecursos` — API для модами-добавляемых ресурсов (подготовка к `Fuente`).
 - Интеграция с `vida-red` (`TejidoCanal`) на уровне `ModContext` для унифицированного доступа к сетевому каналу.
-- Reflection-based binding через `@EjecutorLatido` (маркер уже есть, поддержка в 0.4.x).
+- Дальнейшее развитие `LatidoRegistrador` / `@OyenteDeTick` — см. [roadmap](../roadmap.md).
 
 Точные сроки — в [roadmap](../roadmap.md) и [session-roadmap](../session-roadmap.md).
 
@@ -222,4 +245,4 @@ int d = ctx.ajustes().valor(RENDER_DIST);
 - [guides/latidos.md](../guides/latidos.md) · [guides/catalogo.md](../guides/catalogo.md) · [guides/ajustes.md](../guides/ajustes.md)
 - [modules/susurro.md](./susurro.md) · [modules/bloque.md](./bloque.md) · [modules/objeto.md](./objeto.md) — модули 0.3.0, построенные поверх `base`.
 - [getting-started/first-mod.md](../getting-started/first-mod.md) — полный пример мода.
-- [reference/api-stability.md](../reference/api-stability.md) — что означает `@Preview("base")`.
+- [reference/api-stability.md](../reference/api-stability.md) — политика `@Stable` / `@Preview` для модулей Vida.

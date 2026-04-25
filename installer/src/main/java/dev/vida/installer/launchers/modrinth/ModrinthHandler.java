@@ -141,7 +141,8 @@ public final class ModrinthHandler implements LauncherHandler {
 
         progress.accept("Patching app.db for profile '" + profilePath + "'");
         if (!opt.dryRun()) {
-            boolean updated = ModrinthDbReader.patchJavaArgs(dataDir, profilePath, agentArg);
+            boolean updated = ModrinthDbReader.patchJavaArgs(dataDir, profilePath, agentArg,
+                    opt.minecraftVersion(), opt.loaderVersion());
             if (!updated) {
                 warnings.add("Profile '" + profilePath + "' not found in app.db — "
                         + "java_args not updated. You may need to add -javaagent manually.");

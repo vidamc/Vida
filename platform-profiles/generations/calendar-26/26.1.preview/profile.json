@@ -1,0 +1,16 @@
+{
+  "profileId": "calendar-26/26.1.preview",
+  "gameVersion": "26.1",
+  "generation": "CALENDAR_26",
+  "mappings": {
+    "strategy": "GAME_DIR_PROGUARD"
+  },
+  "mappingMode": "TBD_CALENDAR_DROP",
+  "platformBridge": "dev.vida.platform.VanillaBridge",
+  "morphBundle": [
+    "dev.vida.platform.MinecraftTickMorph",
+    "dev.vida.platform.GuiRenderMorph"
+  ],
+  "minimumJavaVersion": 21,
+  "recommendedJavaVersion": 25
+}

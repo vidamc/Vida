@@ -21,9 +21,10 @@ import java.util.Objects;
  *
  * <p>Поддерживаемые типы компонентов:
  * {@code int}, {@code long}, {@code boolean}, {@code float}, {@code double},
- * {@link String}, {@link Identifier}, {@code enum}.
+ * {@link String}, {@link Identifier}, {@code byte[]} (prefijo de longitud {@code int}),
+ * {@code enum}.
  */
-@ApiStatus.Preview("red")
+@ApiStatus.Stable
 public final class CodificadorRegistros {
 
     private CodificadorRegistros() {}
@@ -96,6 +97,7 @@ public final class CodificadorRegistros {
                 || tipo == double.class
                 || tipo == String.class
                 || tipo == Identifier.class
+                || tipo == byte[].class
                 || tipo.isEnum()) {
             return;
         }
@@ -133,6 +135,12 @@ public final class CodificadorRegistros {
             out.writeUTF(((Identifier) validarNoNulo(valor, nombre)).toString());
             return;
         }
+        if (tipo == byte[].class) {
+            byte[] bs = (byte[]) validarNoNulo(valor, nombre);
+            out.writeInt(bs.length);
+            out.write(bs);
+            return;
+        }
         if (tipo.isEnum()) {
             out.writeUTF(((Enum<?>) validarNoNulo(valor, nombre)).name());
             return;
@@ -161,6 +169,15 @@ public final class CodificadorRegistros {
         }
         if (tipo == Identifier.class) {
             return Identifier.parse(in.readUTF());
+        }
+        if (tipo == byte[].class) {
+            int len = in.readInt();
+            if (len < 0) {
+                throw new IOException("longitud byte[] negativa en " + nombre);
+            }
+            byte[] bs = new byte[len];
+            in.readFully(bs);
+            return bs;
         }
         if (tipo.isEnum()) {
             String valor = in.readUTF();

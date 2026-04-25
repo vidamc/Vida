@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Objects;
 
 /** Структурированные ошибки бутстрапа. */
-@ApiStatus.Preview("loader")
+@ApiStatus.Stable
 public sealed interface LoaderError {
 
     /** Ошибка I/O при чтении/сканировании модов. */

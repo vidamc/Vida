@@ -9,7 +9,7 @@ import dev.vida.core.ApiStatus;
 /**
  * Hook render-pipeline для вставки шейдерного кода.
  */
-@ApiStatus.Preview("render")
+@ApiStatus.Stable
 @FunctionalInterface
 public interface ShaderHook {
 

@@ -8,6 +8,7 @@ import dev.vida.base.latidos.LatidoBus;
 import dev.vida.core.ApiStatus;
 import dev.vida.render.LatidoRenderHud;
 import dev.vida.render.PintorHud;
+import java.lang.invoke.MethodHandle;
 
 /**
  * Мост между vanilla-Minecraft и шиной событий Vida.
@@ -20,7 +21,8 @@ import dev.vida.render.PintorHud;
  *       без поднятия классов Minecraft и полной шины.</li>
  *   <li><b>Отсутствие compile-time зависимости от Minecraft.</b> Реальная
  *       реализация ({@link VanillaBridge}) живёт в отдельном классе и
- *       использует reflection — морфы остаются «тонкими».</li>
+ *       использует лёгкую привязку {@link java.lang.invoke.MethodHandle} —
+ *       морфы остаются «тонкими».</li>
  *   <li><b>Единая точка подсчёта тиков и fallback-логики.</b> Если шина
  *       ещё не установлена, bridge молча игнорирует вызов: морфы не
  *       падают и не спамят логи.</li>
@@ -35,11 +37,25 @@ import dev.vida.render.PintorHud;
 @ApiStatus.Internal
 public interface PlatformBridge {
 
+    /** Сбрасывает кэш рефлексии (только тесты). */
+    @ApiStatus.Internal
+    static void resetGfxFillCacheForTests() {
+        GuiGraphicsFillReflect.resetForTests();
+        GuiGraphicsDrawStringReflect.resetForTests();
+    }
+
     /**
      * Вызывается из {@link MinecraftTickMorph} один раз за client-tick.
      * Публикует {@code LatidoPulso(tick, null, 0)} на глобальную шину.
      */
     void onClientTick();
+
+    /**
+     * Вызывается из {@link ServerTickMorph} в начале каждого серверного тика.
+     *
+     * @param servidorMinecraft {@code net.minecraft.server.MinecraftServer}
+     */
+    default void onServerTick(Object servidorMinecraft) {}
 
     /**
      * Вызывается из {@link GuiRenderMorph} в начале каждого HUD-кадра.
@@ -54,8 +70,8 @@ public interface PlatformBridge {
 
     /**
      * Хелпер для {@link VanillaBridge}: строит {@link PintorHud}, который
-     * делегирует {@code GuiGraphics.fill(int,int,int,int,int)} через
-     * reflection. Вынесен сюда, чтобы его можно было переопределить в
+     * делегирует {@code GuiGraphics.fill} через {@link MethodHandle}. Вынесен
+     * сюда, чтобы его можно было переопределить в
      * заглушках для тестов.
      *
      * @param guiGraphics живой vanilla-объект
@@ -63,12 +79,14 @@ public interface PlatformBridge {
      */
     static PintorHud pintorOver(Object guiGraphics) {
         if (guiGraphics == null) return null;
+        MethodHandle fill = GuiGraphicsFillReflect.resolve(guiGraphics);
+        if (fill == null) {
+            return (x, y, w, h, argb) -> { };
+        }
         return (x, y, w, h, argb) -> {
             try {
-                guiGraphics.getClass()
-                        .getMethod("fill", int.class, int.class, int.class, int.class, int.class)
-                        .invoke(guiGraphics, x, y, x + w, y + h, argb);
-            } catch (ReflectiveOperationException ignored) {
+                fill.invoke(guiGraphics, x, y, x + w, y + h, argb);
+            } catch (Throwable ignored) {
                 // Любая ошибка (старая/обфусцированная версия MC) — тихо пропускаем
                 // кадр для конкретного подписчика. Другие подписчики продолжат работу.
             }

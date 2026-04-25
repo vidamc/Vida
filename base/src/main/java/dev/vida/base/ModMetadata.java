@@ -23,7 +23,7 @@ import java.util.Objects;
  * @param descripcion краткое описание (может быть пустым)
  * @param autores     список авторов; стабильный порядок
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public record ModMetadata(
         String id,
         Version version,

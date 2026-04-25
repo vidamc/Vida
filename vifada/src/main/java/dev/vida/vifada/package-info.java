@@ -51,7 +51,7 @@
  * возвращает трансформированные байты либо структурированную ошибку
  * {@link dev.vida.vifada.VifadaError}.
  */
-@ApiStatus.Preview("vifada")
+@ApiStatus.Stable
 package dev.vida.vifada;
 
 import dev.vida.core.ApiStatus;

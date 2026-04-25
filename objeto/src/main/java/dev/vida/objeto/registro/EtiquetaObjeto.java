@@ -13,7 +13,7 @@ import java.util.Objects;
  * для предметов; типичные vanilla-эквиваленты — {@code #minecraft:wooden_tools},
  * {@code #minecraft:planks_item}.
  */
-@ApiStatus.Preview("objeto")
+@ApiStatus.Stable
 public record EtiquetaObjeto(Identifier id) {
 
     public EtiquetaObjeto {

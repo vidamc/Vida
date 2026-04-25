@@ -15,7 +15,7 @@ import java.util.Set;
 /**
  * Иммутабельное описание свойств entity-type.
  */
-@ApiStatus.Preview("entidad")
+@ApiStatus.Stable
 public record PropiedadesEntidad(
         double masa,
         Hitbox hitbox,
@@ -45,7 +45,7 @@ public record PropiedadesEntidad(
     }
 
     /** Трёхмерный box сущности. */
-    @ApiStatus.Preview("entidad")
+    @ApiStatus.Stable
     public record Hitbox(double ancho, double alto, double profundidad) {
         public Hitbox {
             validarDimension("ancho", ancho);
@@ -65,7 +65,7 @@ public record PropiedadesEntidad(
     }
 
     /** Семейство поведения AI. */
-    @ApiStatus.Preview("entidad")
+    @ApiStatus.Stable
     public enum GrupoIa {
         TERRESTRE,
         VOLADOR,

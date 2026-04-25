@@ -6,7 +6,7 @@
 /**
  * World-латидосы Vida.
  */
-@ApiStatus.Preview("mundo")
+@ApiStatus.Stable
 package dev.vida.mundo.latidos;
 
 import dev.vida.core.ApiStatus;

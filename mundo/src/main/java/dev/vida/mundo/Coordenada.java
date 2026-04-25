@@ -10,7 +10,7 @@ import java.util.Objects;
 /**
  * Трёхмерная координата блока в мире.
  */
-@ApiStatus.Preview("mundo")
+@ApiStatus.Stable
 public record Coordenada(int x, int y, int z) {
 
     public Coordenada desplazar(int dx, int dy, int dz) {
@@ -23,6 +23,20 @@ public record Coordenada(int x, int y, int z) {
 
     public int chunkZ() {
         return Math.floorDiv(z, 16);
+    }
+
+    /**
+     * Горизонтальная координата чанка, которому принадлежит этот блок.
+     */
+    public ChunkCoordenada chunk() {
+        return new ChunkCoordenada(chunkX(), chunkZ());
+    }
+
+    /**
+     * Регион файла сохранения, содержащий этот блок.
+     */
+    public RegionCoordenada region() {
+        return RegionCoordenada.desde(this);
     }
 
     public long distanciaCuadrada(Coordenada otra) {

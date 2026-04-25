@@ -65,6 +65,7 @@ public final class VersionJson {
         jvm.add("-Dvida.config=${game_directory}/vida/config");
         jvm.add("-Dvida.loader.version=" + p.layout.loaderVersion());
         jvm.add("-Dvida.minecraft.version=" + p.layout.minecraftVersion());
+        VidaInstallerJvm.addAliasAndProfileJvmArgs(jvm, p.layout.minecraftVersion());
         arguments.put("jvm", jvm);
         root.put("arguments", arguments);
 

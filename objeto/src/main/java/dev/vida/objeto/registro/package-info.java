@@ -6,7 +6,7 @@
 /**
  * Регистрация предметов в {@link dev.vida.base.catalogo.CatalogoManejador}.
  */
-@ApiStatus.Preview("objeto")
+@ApiStatus.Stable
 package dev.vida.objeto.registro;
 
 import dev.vida.core.ApiStatus;

@@ -56,4 +56,7 @@
  * задачи {@code jar} в зависимость от генерации и валидации манифеста,
  * регистрирует группу задач {@code vida} для удобства поиска в UI IDE.
  */
+@ApiStatus.Stable
 package dev.vida.gradle;
+
+import dev.vida.core.ApiStatus;

@@ -15,8 +15,12 @@ import dev.vida.core.ApiStatus;
  * <p>Vida намеренно не навязывает конкретный формат (NBT, JSON, binary);
  * мод сам решает, как сериализоваться. Простейший случай — POD record,
  * который пишется в {@code DataOutputStream} и читается обратно.
+ *
+ * <p>Для тика, сохранения и синхронизации с клиентом см. опциональный
+ * {@link CicloBloqueEntidad} — мост к игре должен вызывать его методы из
+ * соответствующих хуков BlockEntity.
  */
-@ApiStatus.Preview("bloque")
+@ApiStatus.Stable
 public interface ContextoBloqueEntidad {
 
     /**

@@ -1,10 +1,10 @@
-# base — Ejecutor и reflection-биндер
+# base — Ejecutor и биндер аннотаций (`LatidoRegistrador`)
 
-Расширение модуля `vida-base`: потоко-осознанные обработчики событий (`Ejecutor`), авто-регистрация подписчиков через `LatidoRegistrador` и shortcut-аннотация `@OyenteDeTick`.
+Расширение модуля `vida-base`: потоко-осознанные обработчики событий (`Ejecutor`), авто-регистрация подписчиков через **`LatidoRegistrador`** (сканирование рефлексией **один раз** при регистрации; рантайм-вызов по возможности через **`MethodHandle`**) и shortcut-аннотация `@OyenteDeTick`.
 
 - Пакет: `dev.vida.base.latidos`
 - Gradle: `dev.vida:vida-base`
-- Стабильность: `@ApiStatus.Preview("base")`
+- Стабильность: **`@ApiStatus.Stable`** (пакеты `dev.vida.base.latidos`, линия 1.0+)
 
 ## Зачем
 
@@ -87,7 +87,7 @@ public void limpiarCache(LatidoPulso ev) { ... }
 
 ## LatidoRegistrador
 
-Reflection-биндер: сканирует объект и подписывает аннотированные методы.
+Биндер аннотаций: сканирует объект рефлексией и подписывает аннотированные методы. После валидации для каждого метода по возможности строится **`MethodHandle.unreflect` + `bindTo(instance)`** — на пути **`emitir`** шины рефлексии нет; при недоступности `unreflect` (границы модулей) остаётся запасной **`Method.invoke`**.
 
 ```java
 public final class LatidoRegistrador {

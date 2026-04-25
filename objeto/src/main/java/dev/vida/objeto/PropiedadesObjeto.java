@@ -24,7 +24,7 @@ import java.util.Optional;
  * <p>Собирается через fluent-билдер {@link #con()}; значения проверяются
  * в канонической форме record'а — никаких «полу-валидных» инстансов.
  */
-@ApiStatus.Preview("objeto")
+@ApiStatus.Stable
 public record PropiedadesObjeto(
         TipoObjeto tipo,
         int maxPila,

@@ -40,12 +40,11 @@
  *
  * <h2>Стабильность</h2>
  *
- * Модуль целиком находится в стадии {@code preview("base")} до релиза 1.0.
- * Мажорные изменения в публичных интерфейсах допускаются до объявления
- * стабильности, но всегда сопровождаются записью в {@code CHANGELOG.md} и
- * документированной процедурой миграции.
+ * Публичный API модуля помечен {@link dev.vida.core.ApiStatus.Stable}: контракт
+ * SemVer для потребителей на линии {@code 1.x} описан в
+ * {@code docs/reference/api-stability.md}.
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 package dev.vida.base;
 
 import dev.vida.core.ApiStatus;

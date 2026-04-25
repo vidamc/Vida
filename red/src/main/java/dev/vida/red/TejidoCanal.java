@@ -19,7 +19,7 @@ import java.util.TreeMap;
 /**
  * Памятный канал Tejido с versioned codecs и back-pressure.
  */
-@ApiStatus.Preview("red")
+@ApiStatus.Stable
 public final class TejidoCanal {
 
     private final int maxCola;
@@ -85,6 +85,11 @@ public final class TejidoCanal {
 
         try {
             byte[] payload = codec.codificar(paquete);
+            int max = codec.maxCargaBytes();
+            if (payload.length > max) {
+                return Result.err(new TejidoError.CargaDemasiadoGrande(
+                        tipoCanonical, payload.length, max));
+            }
             TramaPaquete trama = new TramaPaquete(direccion, tipoCanonical, versionCodec, payload);
             pendientes.add(trama);
             encolados++;
@@ -109,7 +114,13 @@ public final class TejidoCanal {
         }
 
         try {
-            return Result.ok(entry.getValue().decodificar(trama.payload()));
+            CodecPaquete<? extends Record> decCodec = entry.getValue();
+            byte[] pay = trama.payload();
+            if (pay.length > decCodec.maxCargaBytes()) {
+                return Result.err(new TejidoError.CargaDemasiadoGrande(
+                        trama.tipoCanonical(), pay.length, decCodec.maxCargaBytes()));
+            }
+            return Result.ok(decCodec.decodificar(pay));
         } catch (IllegalArgumentException ex) {
             return Result.err(new TejidoError.PayloadInvalido(trama.tipoCanonical(), ex.getMessage()));
         }
@@ -168,7 +179,7 @@ public final class TejidoCanal {
     /**
      * Snapshot метрик back-pressure и буфера.
      */
-    @ApiStatus.Preview("red")
+    @ApiStatus.Stable
     public record Estadisticas(
             long encolados,
             long rechazadosBackPressure,

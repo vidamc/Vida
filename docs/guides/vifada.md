@@ -116,7 +116,7 @@ public String version() {
 }
 ```
 
-Используйте осторожно: overwrite несовместим с другими модами, которые инжектят в тот же метод. `VifadaError.PriorityConflict` — если найдётся одновременный `@Inject`.
+Используйте осторожно: overwrite несовместим с другими модами, которые инжектят в тот же метод — трансформер сообщит об ошибке конфигурации (см. sealed-типы `VifadaError`).
 
 ## `@VifadaShadow`
 
@@ -207,6 +207,10 @@ java -Dvida.debug.verifyClasses=true ...
 1. Класс не в `vida.mod.json:vifada.morphs`.
 2. Class ещё не загружен — проверьте логи, что JVM реально дошла до него.
 3. Неправильный `target` — FQCN с точками, не slash'ами.
+
+## Vifada 2
+
+Расширения **`@VifadaMulti`** (несколько целевых методов одним инъектором), **`@VifadaLocal`** (чтение LVT в `HEAD`), **`@VifadaRedirect`** (подмена выбранного `INVOKESTATIC`), а также диагностика **`MorphConflict`** — описаны в [modules/vifada.md](../modules/vifada.md) (раздел «Vifada 2»).
 
 ## Что читать дальше
 

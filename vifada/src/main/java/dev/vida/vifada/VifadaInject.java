@@ -29,7 +29,7 @@ import java.lang.annotation.Target;
  * public void onTick(CallbackInfo ci) { ... }
  * }</pre>
  */
-@ApiStatus.Preview("vifada")
+@ApiStatus.Stable
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.METHOD)
 public @interface VifadaInject {

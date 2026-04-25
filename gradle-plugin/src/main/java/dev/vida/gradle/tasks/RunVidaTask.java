@@ -17,6 +17,7 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.InputDirectory;
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.Optional;
 
@@ -68,11 +69,38 @@ public abstract class RunVidaTask extends JavaExec {
     @Input
     public abstract Property<String> getVidaMainClass();
 
+    /** Пробрасывается в JVM как {@code -Dvida.accessDenied=…}. */
+    @Input
+    public abstract ListProperty<String> getAccessDeniedIds();
+
+    /** Пробрасывается в JVM как {@code -Dvida.minecraftVersion=…}. */
+    @Input
+    @Optional
+    public abstract Property<String> getMinecraftVersion();
+
+    /** Пробрасывается в JVM как {@code -Dvida.platformProfile=…}. */
+    @Input
+    @Optional
+    public abstract Property<String> getPlatformProfile();
+
+    /** Включает {@code -Dvida.dev.hotReload=true}. */
+    @Input
+    public abstract Property<Boolean> getHotReload();
+
+    /**
+     * Каталог скомпилированных классов для наблюдения ({@code build/classes/java/main}).
+     */
+    @InputDirectory
+    @Optional
+    public abstract DirectoryProperty getHotReloadWatchDir();
+
     public RunVidaTask() {
         setGroup("vida");
         setDescription("Run Minecraft with Vida loader attached.");
         // Дефолты выставит plugin. Блокируем авто-закрытие стандартных ChildProcess.
         getBootMainClass().convention("dev.vida.loader.VidaBoot");
+        getAccessDeniedIds().convention(List.of());
+        getHotReload().convention(false);
     }
 
     @Override
@@ -108,11 +136,24 @@ public abstract class RunVidaTask extends JavaExec {
 
         // JVM-аргументы
         List<String> jvm = new ArrayList<>(getVidaJvmArgs().get());
+        List<String> denied = getAccessDeniedIds().get();
+        if (denied != null && !denied.isEmpty()) {
+            jvm.add("-Dvida.accessDenied=" + String.join(",", denied));
+        }
+        appendOptionalSysProp(jvm, getMinecraftVersion(), "vida.minecraftVersion");
+        appendOptionalSysProp(jvm, getPlatformProfile(), "vida.platformProfile");
+        if (Boolean.TRUE.equals(getHotReload().getOrElse(false))) {
+            jvm.add("-Dvida.dev.hotReload=true");
+            if (getHotReloadWatchDir().isPresent()) {
+                jvm.add("-Dvida.dev.hotReload.watch="
+                        + getHotReloadWatchDir().get().getAsFile().getAbsolutePath());
+            }
+        }
         if (agent) {
             StringBuilder agentArg = new StringBuilder("-javaagent:");
             agentArg.append(loader.getAbsolutePath());
             if (getModsDir().isPresent()) {
-                agentArg.append("=mods=").append(getModsDir().get().getAsFile().getAbsolutePath());
+                agentArg.append("=modsDir=").append(getModsDir().get().getAsFile().getAbsolutePath());
                 agentArg.append(",strict=").append(strict);
             } else {
                 agentArg.append("=strict=").append(strict);
@@ -140,5 +181,16 @@ public abstract class RunVidaTask extends JavaExec {
                 agent, strict, getMainClass().get(), cp.size());
 
         super.exec();
+    }
+
+    private static void appendOptionalSysProp(List<String> jvm, Property<String> prop, String key) {
+        if (!prop.isPresent()) {
+            return;
+        }
+        String v = prop.get();
+        if (v == null || v.isBlank()) {
+            return;
+        }
+        jvm.add("-D" + key + "=" + v.trim());
     }
 }

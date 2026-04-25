@@ -16,7 +16,7 @@ import java.util.Objects;
  * {@code "example-mod/io"}), чтобы одна система не могла вытеснить
  * другую из пула.
  */
-@ApiStatus.Preview("susurro")
+@ApiStatus.Stable
 public record Etiqueta(String valor) {
 
     public Etiqueta {

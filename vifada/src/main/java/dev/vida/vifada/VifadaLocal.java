@@ -11,13 +11,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Preview-расширение Vifada: декларация доступа к локальной переменной target-метода.
+ * Доступ к локальной переменной целевого метода через LVT при инъекции (см. {@link VifadaInject}).
  *
- * <p>Предполагается для использования на параметрах метода-инъектора.
- * Реализация планируется в {@code vifada-next}; пока аннотация доступна как
- * compile-time контракт.
+ * <p>Указывается на параметрах метода морфа. Работает только для {@link InjectionPoint#HEAD}.
  */
-@ApiStatus.Preview("vifada-next")
+@ApiStatus.Stable
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.PARAMETER)
 public @interface VifadaLocal {

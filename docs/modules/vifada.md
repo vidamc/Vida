@@ -4,7 +4,7 @@
 
 - Пакет: `dev.vida.vifada`
 - Gradle: `dev.vida:vida-vifada`
-- Стабильность: `@ApiStatus.Preview("vifada")`
+- Стабильность: **`@ApiStatus.Stable`** (пакет `dev.vida.vifada`, линия 2.0 «Масштаб»)
 - Имя в проекте: **Vifada**
 
 Эта страница — про модуль. Практическое руководство мод-автора — [guides/vifada.md](../guides/vifada.md).
@@ -70,14 +70,15 @@ public boolean shouldShowFps() {
 - `RETURN` — все `xRETURN`-инструкции (подменяются на ветку к инъектору).
 - `INVOKE`, `CONSTANT`, `FIELD`, `NEW` — зарезервированы, не реализованы в 0.x.
 
-### `@VifadaMulti` и `@VifadaLocal` (preview: `vifada-next`)
+### Vifada 2 — `@VifadaMulti`, `@VifadaLocal`, `@VifadaRedirect`
 
-С `0.6.0` в API доступны ранние аннотации следующего поколения:
+- **`@VifadaMulti`** — один инъектор (тот же `CallbackInfo` и сигнатура, что у целевого метода) применяется к каждому из `methods = { "a()V", "b(II)V", ... }` в одной и той же точке `at`. Все перечисленные target-методы должны иметь **одинаковую** сигнатуру параметров (как в обычном `@VifadaInject`).
 
-- `@VifadaMulti` — один инъектор для нескольких target-методов (`methods = {...}`).
-- `@VifadaLocal` — декларация доступа к локальной переменной target-метода (по `ordinal`/`descriptor`).
+- **`@VifadaLocal`** — на параметре инъектора: взять значение не из «логического» слота аргумента, а из LVT целевого метода (по `ordinal` и опциональному `descriptor`). Поддерживается только в сочетании с `InjectionPoint.HEAD`.
 
-Важно: это именно preview-контракт (`@ApiStatus.Preview("vifada-next")`). Transformer 0.6.0 ещё не применяет эти аннотации в рантайме; они добавлены, чтобы моды и инструменты могли заранее компилироваться под будущий API.
+- **`@VifadaRedirect`** — заменяет *n*-й (см. `ordinal`) вызов `INVOKESTATIC` с заданным `invokeOwner` / `invokeName` / `invokeDescriptor` внутри `method` на статический хелпер морфа. Сигнатура хелпера совпадает с сигнатурой вызываемого метода. (Расширения на `INVOKEVIRTUAL` — по мере потребности.)
+
+**Конфликты:** если два *разных* морфа с **одинаковым** `@VifadaMorph.priority` накладывают `HEAD`/`RETURN` на одну и ту же комбинацию (целевой метод + `InjectionPoint`), применение сопровождается `VifadaError.MorphConflict` с подсказкой выставить разные приоритеты (меньшее значение — раньше в порядке применения).
 
 ## Главный API
 
@@ -93,18 +94,15 @@ Result<byte[], VifadaError> r = Transformer.transform(targetClassBytes, morphs);
 
 ### `VifadaError`
 
-Типизированные ошибки:
+Запечатанный интерфейс (`sealed`): `BadMorph`, `NotAMorph`, `TargetMethodNotFound`, `ShadowMissing`, `SignatureMismatch`, `UnsupportedAt`, `WrongTarget`, **`MorphConflict`** (конфликт двух морфов на одну точку с одинаковым приоритетом), `AsmFailure`.
 
-- `TargetNotFound(String method)` — метод с указанной сигнатурой не существует в целевом классе.
-- `InvalidMorph(String morph, String reason)` — morph нарушает контракт (не abstract, несовпадение сигнатур).
-- `PriorityConflict(String method, List<String> morphs)` — несколько morph'ов претендуют на одну точку с одинаковым приоритетом.
-- `AsmError(String method, Throwable cause)` — байткод-валидатор ASM отклонил результат.
+Подробнее — исходники [`VifadaError`](../../vifada/src/main/java/dev/vida/vifada/VifadaError.java).
 
 ## Приоритеты и порядок
 
 `@VifadaMorph(priority = 1000)` — меньше значит раньше в цепочке. Дефолт `1000`. Если два мода инъектят в одну точку — порядок детерминированный (сортировка по `priority`, при равенстве — по алфавиту `morph class FQCN`).
 
-Для случаев, где порядок критичен, используйте `@VifadaMorph(order = VifadaOrder.AFTER, afterTargets = {"otra:morph"})` (preview-API).
+Для конфликтов на одной точке разведите морфы по **`@VifadaMorph.priority()`** (меньше — раньше); при совпадении приоритета и слота вы получите **`MorphConflict`**.
 
 ## Как работает внутри
 

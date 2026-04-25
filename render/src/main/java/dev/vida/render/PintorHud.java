@@ -20,9 +20,25 @@ import dev.vida.core.ApiStatus;
  * Экземпляр безопасно использовать только на главном рендер-потоке, в котором
  * было испущено событие.
  */
-@ApiStatus.Preview("render")
+@ApiStatus.Stable
 @FunctionalInterface
 public interface PintorHud {
+
+    /**
+     * Рисует строку текста шрифтом HUD. Реализация по умолчанию — no-op (тесты/заглушки);
+     * на клиенте инжектируется мост {@code dev.vida.platform} (см. {@code GuiGraphics}
+     * + {@code drawString} через {@code MethodHandle}).
+     *
+     * @param x         левый край базовой линии (px)
+     * @param y         верхний край строки (px), как в типичном {@code drawString}
+     * @param texto     текст; при {@code null} вызов игнорируется
+     * @param colorArgb цвет в ARGB
+     */
+    default void dibujarCadena(int x, int y, String texto, int colorArgb) {
+        if (texto == null || texto.isEmpty()) {
+            return;
+        }
+    }
 
     /**
      * Рисует залитый прямоугольник.

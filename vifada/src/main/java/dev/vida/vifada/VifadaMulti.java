@@ -11,12 +11,12 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Preview-расширение Vifada: один инъектор можно применить к нескольким target-методам.
+ * Один инъектор применяется к нескольким target-методам одной и той же точкой {@link VifadaAt}.
  *
- * <p>Аннотация пока не обрабатывается transformer'ом и служит контрактом раннего
- * API для следующей линии развития {@code vifada-next}.
+ * <p>Все методы из {@link #methods()} должны быть совместимы с параметрами метода морфа
+ * (последний параметр — {@link CallbackInfo}), как для {@link VifadaInject}.
  */
-@ApiStatus.Preview("vifada-next")
+@ApiStatus.Stable
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.METHOD)
 public @interface VifadaMulti {

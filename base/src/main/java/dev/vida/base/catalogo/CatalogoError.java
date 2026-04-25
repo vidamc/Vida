@@ -8,7 +8,7 @@ import dev.vida.core.ApiStatus;
 import java.util.Objects;
 
 /** Структурированные ошибки реестров. */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public sealed interface CatalogoError {
 
     /** Попытка записать значение под уже занятым ключом. */

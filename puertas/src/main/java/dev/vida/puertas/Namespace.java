@@ -17,7 +17,7 @@ import dev.vida.core.ApiStatus;
  *       собранных напрямую против Mojang mappings).</li>
  * </ul>
  */
-@ApiStatus.Preview("puertas")
+@ApiStatus.Stable
 public enum Namespace {
     CRUDO("crudo"),
     INTERMEDIO("intermedio"),

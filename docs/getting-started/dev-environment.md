@@ -22,10 +22,14 @@ git --version
 ```bash
 git clone https://github.com/vidamc/Vida.git
 cd Vida
-./gradlew build         # полная сборка всех модулей
-./gradlew check         # тесты + lint + spotless
-./gradlew :loader:agentJar  # shaded JAR агента
+# как в .github/workflows/ci.yml:
+./gradlew verifyPlatformProfiles build vidaDocTest
+# полная пересборка + сводный Javadoc (опционально):
+# ./gradlew clean build verifyPlatformProfiles vidaDocTest javadocAll
+./gradlew :loader:agentJar  # JAR агента (vida loader)
 ```
+
+Каталог `mods/` в корне используется только для **опциональных** подпроектов, подключаемых в `settings.gradle.kts` при появлении соответствующей папки; в стандартном клоне он может быть пустым.
 
 Структура репозитория описана в [architecture/overview.md](../architecture/overview.md). Правила коммитов и стиля — в `[CONTRIBUTING.md](../../CONTRIBUTING.md)`.
 
@@ -159,5 +163,7 @@ java -Dvida.log.level=DEBUG ...
 
 - Напишите свой первый мод — [first-mod.md](./first-mod.md).
 - Поняли архитектуру — [architecture/overview.md](../architecture/overview.md).
-- Готовы контрибьютить — `[CONTRIBUTING.md](../../CONTRIBUTING.md)`.
+- Найти любую страницу — [полный каталог `docs/`](../index.md).
+- Справочники и схемы — [reference/index.md](../reference/index.md), [modder-toolkit](../guides/modder-toolkit.md).
+- Готовы контрибьютить — [CONTRIBUTING.md](../../CONTRIBUTING.md).
 

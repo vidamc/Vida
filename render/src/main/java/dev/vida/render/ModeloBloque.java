@@ -11,7 +11,7 @@ import java.util.Objects;
 /**
  * Декларативная render-модель блока.
  */
-@ApiStatus.Preview("render")
+@ApiStatus.Stable
 public record ModeloBloque(Identifier geometria, Identifier texturaPrincipal) {
 
     public static final Identifier GEOMETRIA_CUBO = Identifier.of("vida", "cube");

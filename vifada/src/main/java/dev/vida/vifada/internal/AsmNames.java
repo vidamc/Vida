@@ -23,6 +23,10 @@ public final class AsmNames {
     public static final String VIFADA_SHADOW_DESC    = "Ldev/vida/vifada/VifadaShadow;";
     public static final String VIFADA_AT_DESC        = "Ldev/vida/vifada/VifadaAt;";
 
+    public static final String VIFADA_MULTI_DESC = "Ldev/vida/vifada/VifadaMulti;";
+    public static final String VIFADA_LOCAL_DESC = "Ldev/vida/vifada/VifadaLocal;";
+    public static final String VIFADA_REDIRECT_DESC = "Ldev/vida/vifada/VifadaRedirect;";
+
     public static final String INJECTION_POINT_DESC  = "Ldev/vida/vifada/InjectionPoint;";
     public static final String CALLBACK_INFO_INTERNAL = "dev/vida/vifada/CallbackInfo";
     public static final String CALLBACK_INFO_DESC    = "L" + CALLBACK_INFO_INTERNAL + ";";

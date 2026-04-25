@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.vida.core.Identifier;
 import dev.vida.core.Result;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -67,6 +68,17 @@ class TejidoCanalTest {
     }
 
     @Test
+    void tejido_tick_enlace_pasa_pendientes() {
+        TejidoCanal canal = new TejidoCanal(4);
+        canal.registrarRecordServidor(PongServidor.class, 1);
+        canal.encolar(new PongServidor("a"), 1);
+        List<TramaPaquete> vistos = new ArrayList<>();
+        TejidoTickEnlace.enCadaTick(canal, vistos::addAll);
+        assertThat(vistos).hasSize(1);
+        assertThat(canal.pendientes()).isZero();
+    }
+
+    @Test
     void drenar_vacia_la_cola() {
         TejidoCanal canal = new TejidoCanal(4);
         canal.registrarRecordServidor(PongServidor.class, 1);
@@ -76,6 +88,31 @@ class TejidoCanalTest {
         List<TramaPaquete> frames = canal.drenarPendientes();
         assertThat(frames).hasSize(2);
         assertThat(canal.pendientes()).isZero();
+    }
+
+    @Test
+    void rechaza_payload_mayor_que_maxCodec() {
+        TejidoCanal canal = new TejidoCanal(4);
+        canal.registrarCliente(PingCliente.class, 1, new CodecPaquete<>() {
+            @Override
+            public byte[] codificar(PingCliente paquete) {
+                return new byte[500];
+            }
+
+            @Override
+            public PingCliente decodificar(byte[] payload) {
+                return new PingCliente(payload[0], Identifier.of("vida", "x"), false, EstadoPing.OK);
+            }
+
+            @Override
+            public int maxCargaBytes() {
+                return 100;
+            }
+        });
+        PingCliente msg = new PingCliente(1, Identifier.of("vida", "x"), false, EstadoPing.OK);
+        Result<TramaPaquete, TejidoError> r = canal.encolar(msg, 1);
+        assertThat(r.isErr()).isTrue();
+        assertThat(r.unwrapErr()).isInstanceOf(TejidoError.CargaDemasiadoGrande.class);
     }
 
     @Test

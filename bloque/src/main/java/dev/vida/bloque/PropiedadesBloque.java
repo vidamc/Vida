@@ -21,7 +21,7 @@ import java.util.Set;
  * <p>Дизайн: поля — record, билдер — отдельный класс, чтобы иммутабельность
  * не ломалась и не нужно было делать copy-with-setters вручную.
  */
-@ApiStatus.Preview("bloque")
+@ApiStatus.Stable
 public record PropiedadesBloque(
         MaterialBloque material,
         float dureza,

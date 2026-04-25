@@ -42,7 +42,4 @@
  *   ModLoader × N   (каждый мод — свой, parent = JuegoLoader)
  * </pre>
  */
-@ApiStatus.Preview("loader")
 package dev.vida.loader;
-
-import dev.vida.core.ApiStatus;

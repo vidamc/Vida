@@ -13,7 +13,7 @@ import java.util.Objects;
  *
  * @param <T> фактический тип компонента
  */
-@ApiStatus.Preview("entidad")
+@ApiStatus.Stable
 public final class ClaveComponenteEntidad<T extends ComponenteEntidad> {
 
     private final Identifier id;

@@ -18,7 +18,7 @@ import java.util.Objects;
  *
  * @param <T> фактический тип компонента
  */
-@ApiStatus.Preview("objeto")
+@ApiStatus.Stable
 public final class ClaveComponente<T extends Componente> {
 
     private final Identifier id;

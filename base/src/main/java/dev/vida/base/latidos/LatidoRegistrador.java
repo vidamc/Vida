@@ -10,6 +10,8 @@ import dev.vida.core.Log;
 import dev.vida.susurro.Etiqueta;
 import dev.vida.susurro.HiloPrincipal;
 import dev.vida.susurro.Susurro;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -18,9 +20,13 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Reflection-биндер: сканирует методы объекта, помеченные
+ * Биндер аннотаций: сканирует методы объекта, помеченные
  * {@link EjecutorLatido @EjecutorLatido}, и подписывает их на
  * соответствующие каналы {@link LatidoBus}.
+ *
+ * <p>После разрешения метода рантайм-вызов идёт через
+ * {@link java.lang.invoke.MethodHandle}; при недоступности {@code unreflect}
+ * (границы модулей) — запасной путь {@code Method.invoke}.
  *
  * <h2>Алгоритм привязки</h2>
  * <ol>
@@ -48,7 +54,7 @@ import java.util.Objects;
  *
  * @see EjecutorLatido
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public final class LatidoRegistrador {
 
     private static final Log LOG = Log.of(LatidoRegistrador.class);
@@ -85,7 +91,11 @@ public final class LatidoRegistrador {
 
         for (Method m : cls.getDeclaredMethods()) {
             EjecutorLatido ejecutorLatido = m.getAnnotation(EjecutorLatido.class);
+            LatidosProfundos latidosProfundos = m.getAnnotation(LatidosProfundos.class);
             OyenteDeTick oyenteDeTick = m.getAnnotation(OyenteDeTick.class);
+            if (latidosProfundos != null && ejecutorLatido == null && oyenteDeTick == null) {
+                throw new LatidoRegistradorError.MarcadorLatidosProfundosSinEjecutor(m);
+            }
             if (ejecutorLatido == null && oyenteDeTick == null) continue;
             if (ejecutorLatido != null && oyenteDeTick != null) {
                 throw new LatidoRegistradorError.AnotacionesConflictivas(m);
@@ -137,7 +147,10 @@ public final class LatidoRegistrador {
 
         Prioridad prioridadBus = anotacion.prioridadBus().aLatidos();
         Fase fase = anotacion.fase().aLatidos();
-        Oyente<E> oyente = evento -> invocarMetodo(instance, metodo, evento);
+        MethodHandle manija = manijaInstancia(metodo, instance);
+        Oyente<E> oyente = manija != null
+                ? evento -> invocarManija(manija, evento)
+                : evento -> invocarMetodo(instance, metodo, evento);
 
         LOG.debug("  {} → {} [{}] ejecutor={} prioridad={} fase={}",
                 metodo.getName(), latido, tipoEvento.getSimpleName(),
@@ -176,15 +189,26 @@ public final class LatidoRegistrador {
                 susurro,
                 hp,
                 "@OyenteDeTick");
-        Oyente<LatidoPulso> oyente = evento -> {
-            if (evento.profundidad() != 0) {
-                return;
-            }
-            if (!debeEjecutarTick(evento.tickActual(), anotacion.tps())) {
-                return;
-            }
-            invocarMetodo(instance, metodo, evento);
-        };
+        MethodHandle manijaTick = manijaInstancia(metodo, instance);
+        Oyente<LatidoPulso> oyente = manijaTick != null
+                ? evento -> {
+                    if (evento.profundidad() != 0) {
+                        return;
+                    }
+                    if (!debeEjecutarTick(evento.tickActual(), anotacion.tps())) {
+                        return;
+                    }
+                    invocarManija(manijaTick, evento);
+                }
+                : evento -> {
+                    if (evento.profundidad() != 0) {
+                        return;
+                    }
+                    if (!debeEjecutarTick(evento.tickActual(), anotacion.tps())) {
+                        return;
+                    }
+                    invocarMetodo(instance, metodo, evento);
+                };
 
         LOG.debug("  {} → {} [LatidoPulso] ejecutor={} prioridad={} fase={} tps={}",
                 metodo.getName(), LatidoPulso.TIPO, anotacion.kind(),
@@ -287,6 +311,32 @@ public final class LatidoRegistrador {
         long ahora = (tickActual * tps) / 20L;
         long antes = ((tickActual - 1L) * tps) / 20L;
         return ahora != antes;
+    }
+
+    /**
+     * Пытается получить привязанный {@link MethodHandle} для вызова
+     * {@code instance.metodo(evento)} без {@code Method.invoke}.
+     */
+    private static MethodHandle manijaInstancia(Method metodo, Object instance) {
+        try {
+            return MethodHandles.lookup().unreflect(metodo).bindTo(instance);
+        } catch (IllegalAccessException | SecurityException e) {
+            return null;
+        }
+    }
+
+    private static void invocarManija(MethodHandle manija, Object evento) {
+        try {
+            manija.invoke(evento);
+        } catch (Throwable t) {
+            if (t instanceof RuntimeException re) {
+                throw re;
+            }
+            if (t instanceof Error err) {
+                throw err;
+            }
+            throw new RuntimeException(t);
+        }
     }
 
     private static void invocarMetodo(Object instance, Method metodo, Object evento) {

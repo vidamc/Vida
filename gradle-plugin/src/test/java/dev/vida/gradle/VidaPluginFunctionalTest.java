@@ -58,6 +58,8 @@ final class VidaPluginFunctionalTest {
                 }
                 """);
 
+        Files.createDirectories(projectDir.resolve("src/main/resources"));
+
         BuildResult result = GradleRunner.create()
                 .withProjectDir(projectDir.toFile())
                 .withPluginClasspath()
@@ -115,5 +117,65 @@ final class VidaPluginFunctionalTest {
 
         assertThat(result.getOutput())
                 .containsAnyOf("vida.mod.json", "invalid", "ManifestError", "BAD ID");
+    }
+
+    @Test
+    void validate_reads_src_manifest_when_auto_generate_off(@TempDir Path projectDir)
+            throws IOException {
+        Files.writeString(projectDir.resolve("settings.gradle.kts"), """
+                rootProject.name = "demo"
+                """);
+
+        Files.createDirectories(projectDir.resolve("src/main/resources"));
+        Files.writeString(projectDir.resolve("src/main/resources/vida.mod.json"), """
+                {
+                  "schema": 1,
+                  "id": "manual_mod",
+                  "version": "1.0.0",
+                  "name": "Manual",
+                  "description": "hand-authored manifest",
+                  "authors": ["A"],
+                  "license": "Apache-2.0",
+                  "entrypoints": { "main": ["com.example.M"] },
+                  "dependencies": { "required": { "vida": ">=0.1.0" } },
+                  "vifada": {},
+                  "puertas": [],
+                  "modules": [],
+                  "incompatibilities": [],
+                  "custom": {}
+                }
+                """);
+
+        Files.writeString(projectDir.resolve("build.gradle.kts"), """
+                plugins {
+                    id("java-library")
+                    id("dev.vida.mod")
+                }
+
+                java {
+                    toolchain {
+                        languageVersion.set(JavaLanguageVersion.of(21))
+                    }
+                }
+
+                vida {
+                    autoGenerateManifest.set(false)
+                    minecraft {
+                        version.set("1.21.1")
+                    }
+                }
+                """);
+
+        BuildResult result = GradleRunner.create()
+                .withProjectDir(projectDir.toFile())
+                .withPluginClasspath()
+                .withArguments("vidaValidateManifest", "--stacktrace")
+                .forwardOutput()
+                .build();
+
+        assertThat(result.task(":vidaValidateManifest").getOutcome())
+                .isEqualTo(TaskOutcome.SUCCESS);
+        assertThat(projectDir.resolve("build/generated/vida/resources/vida.mod.json"))
+                .doesNotExist();
     }
 }

@@ -71,8 +71,8 @@ public abstract class RemapJarTask extends DefaultTask {
 
     @TaskAction
     public void run() throws IOException {
-        Path input  = getInputJar().get().getAsFile().toPath();
-        Path output = getOutputJar().get().getAsFile().toPath();
+        Path input  = getInputJar().get().getAsFile().toPath().toAbsolutePath().normalize();
+        Path output = getOutputJar().get().getAsFile().toPath().toAbsolutePath().normalize();
 
         MappingTree tree = loadMappings();
         Namespace target = Namespace.of(
@@ -97,13 +97,13 @@ public abstract class RemapJarTask extends DefaultTask {
                     + "'vida.minecraft.mappings.proguard'.");
         }
         if (hasCtg) {
-            Path f = getCtgMappings().get().getAsFile().toPath();
+            Path f = getCtgMappings().get().getAsFile().toPath().toAbsolutePath().normalize();
             try (InputStream in = new BufferedInputStream(Files.newInputStream(f))) {
                 Result<MappingTree, MappingError> r = CtgReader.read(f.getFileName().toString(), in);
                 return unwrap(r, f);
             }
         }
-        Path f = getProguardMappings().get().getAsFile().toPath();
+        Path f = getProguardMappings().get().getAsFile().toPath().toAbsolutePath().normalize();
         Namespace obf   = Namespace.of(getObfNamespace().getOrElse("obf"));
         Namespace named = Namespace.of(getNamedNamespace().getOrElse("named"));
         try (var rd = new BufferedReader(

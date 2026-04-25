@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>Потокобезопасность: {@link #enviar} можно звать из любого потока;
  * {@link #pulso} должен вызываться строго из одного (main) потока.
  */
-@ApiStatus.Preview("susurro")
+@ApiStatus.Stable
 public final class HiloPrincipal {
 
     private static final Log LOG = Log.of(HiloPrincipal.class);

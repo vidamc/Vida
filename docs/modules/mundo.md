@@ -1,24 +1,30 @@
 # mundo
 
-API мира и world-латидосов: `Mundo`, `Coordenada`, `Dimension`, `Bioma` и события из `LatidosMundo`. Модуль соединяет декларативные типы из `vida-base`/`vida-entidad` с реальным world-runtime, но сам по себе остаётся максимально лёгким и тестируемым.
+Публичный **world API** без ссылок на классы Minecraft: снимок `Mundo`, координаты блока/чанка/региона, измерение, биом, **идентификатор блока в клетке и теги блоков** (`EtiquetaBloque` из `vida-bloque`), world-латидосы. Vanilla-runtime не в compile classpath; клиентская выборка — через `:loader` (`MundoClienteVanilla`).
 
 - Пакет: `dev.vida.mundo`
 - Gradle: `dev.vida:vida-mundo`
-- Стабильность: `@ApiStatus.Preview("mundo")`
-
-`vida-mundo` появился в `0.5.0` как bridge-слой между чистыми data-типами и Minecraft world runtime.
+- Стабильность: **`@ApiStatus.Stable`** с 2.0 «Масштаб» (SemVer для публичных типов; см. [api-stability.md](../reference/api-stability.md))
 
 ```kotlin
 dependencies {
-    compileOnly("dev.vida:vida-mundo:0.5.0")
+    compileOnly("dev.vida:vida-mundo:2.0.0")
 }
 ```
 
-## Главные типы
+`compileOnly` — на рантайме API находится в загрузчике / общем classpath с другими модами.
 
-### `Mundo`
+## Контракт стабильности
 
-Публичный интерфейс снимка мира. В `0.5.0` он intentionally компактный:
+- Публичные типы помечены `@ApiStatus.Stable`; расширение идёт через **новые** `default`-методы в `Mundo` или новые типы в пакете, без ломки существующих `record`-компонентов.
+- Фабрики высот `LimitesVerticales.*Vanilla121()` отражают **типичный** профиль Minecraft Java **1.21.x**; кастомные измерения и datapack-измерения могут отличаться — уточнение через реализацию `Mundo` / платформенный мост.
+- Упаковка `ChunkCoordenada.empaquetar` совместима с привычным представлением пары `(chunkX, chunkZ)` в одном `long`.
+
+## `Mundo`
+
+Интерфейс снимка мира: идентификатор, измерение, биом в точке, признак загрузки чанка для координаты, цикл дня.
+
+Обязательные методы:
 
 ```java
 public interface Mundo {
@@ -30,136 +36,143 @@ public interface Mundo {
 }
 ```
 
-Дополнительные default-методы:
+Дополнительные **`default`**-методы (совместимое расширение без поломки реализаций):
 
-- `esDeDia()`
-- `esDeNoche()`
+| Метод | Назначение |
+|-------|------------|
+| `limitesVerticales()` | Допустимый диапазон `y`; по умолчанию из `dimension().limitesVerticalesPredeterminados()` |
+| `enRangoDeAltura(Coordenada)` | Проверка `y` против `limitesVerticales()` |
+| `esDeDia()` / `esDeNoche()` | Полутоновый день по `tiempoDelDia()` mod 24000 |
+| `bloqueRegistradoEn(Coordenada)` | `Optional<Identifier>` блока в реестре игры; `empty` если чанк не загружен или нет данных |
+| `bloqueTieneEtiqueta(Coordenada, EtiquetaBloque)` | принадлежность блока тегу (datapack / синхронизация реестра) |
 
-Этого достаточно для безопасных подписчиков и тестируемой доменной логики без утечки vanilla-классов в публичный API.
+Зависимость **`vida-bloque`** нужна только для типа тега `EtiquetaBloque`; сами блоки описываются там же (`Bloque`, `RegistroBloques`).
+
+Референсная минимальная реализация для мостов и тестов — `MundoEstatico` (биом / «загруженность» / опционально явные `LimitesVerticales` и фиксированный `bloqueRegistradoEn`).
+
+## Координаты
 
 ### `Coordenada`
 
-Трёхмерный `record` (`x`, `y`, `z`) с утилитами для world-кода:
+Блок `(x, y, z)` с `desplazar`, делением на чанк, квадратом расстояния, а также:
 
-```java
-Coordenada origen = new Coordenada(120, 64, -30);
-Coordenada arriba = origen.desplazar(0, 1, 0);
+- `chunk()` → `ChunkCoordenada`
+- `region()` → `RegionCoordenada`
 
-int chunkX = origen.chunkX();
-int chunkZ = origen.chunkZ();
-long d2 = origen.distanciaCuadrada(arriba);
-```
+### `ChunkCoordenada`
 
-`Coordenada` неизменяема, поэтому её можно безопасно кэшировать, использовать в ключах карт и гонять между потоками.
+Горизонталь `(chunkX, chunkZ)`; `empaquetar` / `desempaquetar` / `clave`; `desde(Coordenada)`; `region()` для перехода к региону `.mca`.
 
-### `Dimension`
+### `RegionCoordenada`
 
-Value-type измерения:
+Индекс файла региона (**32×32** чанка): `desde(ChunkCoordenada)` и `desde(Coordenada)`, `clave()` для карт и кэшей.
 
-- `id`
-- `natural`
-- `permiteCama`
-- `techoFijo`
+### `LimitesVerticales`
 
-Есть предустановленные константы `OVERWORLD`, `NETHER`, `END`, но моды могут создавать и свои измерения через `Dimension.de(...)`.
+Диапазон **включительно** по `y`: `contiene(int)`, `contiene(Coordenada)`, `alturaSpan()`, фабрики `overworldVanilla121()`, `netherVanilla121()`, `endVanilla121()`, произвольный `de(min, max)`.
 
-### `Bioma`
+## `Dimension`
 
-Описание биома:
+Поля: `id`, `natural`, `permiteCama`, `techoFijo`; константы `OVERWORLD`, `NETHER`, `END`; фабрики `Dimension.de(...)`.
 
-- `id`
-- `temperatura`
-- `humedad`
-- `precipitacion`
+Метод **`limitesVerticalesPredeterminados()`** возвращает профиль высот Vanilla 1.21.x для известных id; для пользовательских измерений — безопасный fallback как у Overworld (пока мост не задаёт точнее через `Mundo.limitesVerticales()`).
 
-```java
-Bioma tundra = new Bioma(
-        Identifier.of("minecraft", "snowy_plains"),
-        0.0f,
-        0.5f,
-        Bioma.Precipitacion.NIEVE);
-```
+## `Bioma`
 
-Полезные shortcut'ы:
-
-- `esFrio()`
-- `tienePrecipitacion()`
+`id`, конечная `temperatura`, `humedad` ∈ [0..1], `precipitacion`; помощники `esFrio()`, `tienePrecipitacion()`.
 
 ## World-латидосы (`dev.vida.mundo.latidos`)
 
-Модуль добавляет типизированные события уровня мира:
+Класс `LatidosMundo` объединяет типизированные события:
 
-### `LatidosMundo.MundoCargado`
+| Запись | Latido id | Поля |
+|--------|-----------|------|
+| `MundoCargado` | `vida:mundo_cargado` | `mundo`, `recienCreado` |
+| `ChunkCargado` | `vida:chunk_cargado` | `mundo`, `chunkX`, `chunkZ`, `completo` |
+| `ChunkDescargado` | `vida:chunk_descargado` | `mundo`, `chunkX`, `chunkZ` |
+| `Tick` | `vida:mundo_tick` | `mundo`, `tickActual`, `tiempoDelDia` |
+| `NocheAmanece` | `vida:noche_amanece` | `mundo`, `tiempoAnterior`, `tiempoActual`, `transicion` |
 
-Срабатывает после появления `Mundo` в рантайме Vida.
+`Tick` дополняет общий `LatidoPulso` из `vida-base`, когда нужен именно контекст мира. Подписка — через `LatidoBus` и `@EjecutorLatido` (см. [base-ejecutor](./base-ejecutor.md)).
+
+### Пример подписчика
 
 ```java
-@EjecutorLatido
-public void alCargar(LatidosMundo.MundoCargado ev) {
-    Mundo mundo = ev.mundo();
-    if (mundo.dimension().natural()) {
-        // ...
+import dev.vida.base.latidos.EjecutorLatido;
+import dev.vida.mundo.Mundo;
+import dev.vida.mundo.latidos.LatidosMundo;
+
+public final class OyentesMundoEjemplo {
+
+    @EjecutorLatido
+    public void alCargar(LatidosMundo.MundoCargado ev) {
+        Mundo mundo = ev.mundo();
+        if (mundo.dimension().natural()) {
+            // ...
+        }
     }
 }
 ```
 
-### `LatidosMundo.ChunkCargado`
-
-Событие загрузки чанка:
-
-- `mundo`
-- `chunkX`
-- `chunkZ`
-- `completo`
-
-`completo=false` полезен для случаев, когда runtime знает про chunk только частично (например, ранняя стадия генерации).
-
-### `LatidosMundo.Tick`
-
-World-specific тик:
-
-- `mundo`
-- `tickActual`
-- `tiempoDelDia`
-
-Это дополняет общий `LatidoPulso` из `vida-base`: если нужен именно мир, а не абстрактный «пульс сервера», слушайте `LatidosMundo.Tick`.
-
-### `LatidosMundo.NocheAmanece`
-
-Событие перехода суток:
-
-- `mundo`
-- `tiempoAnterior`
-- `tiempoActual`
-- `transicion` (`AMANECER` / `ANOCHECER`)
-
-Хорошо подходит для AI-режимов, ambient-музыки, scheduled spawn'ов и light-sensitive механик.
-
 ## `@OyenteDeTick`
 
-`vida-base` в `0.5.0` добавляет аннотацию `@OyenteDeTick(tps = 20)` как shortcut для подписки на `LatidoPulso` с частотным throttling'ом.
-
-```java
-@OyenteDeTick(tps = 1)
-public void guardarCadaSegundo(LatidoPulso ev) {
-    // вызывается примерно раз в секунду
-}
-```
-
-Особенности:
-
-- работает по корневым тикам (`profundidad == 0`);
-- поддерживает те же executor-параметры, что и `@EjecutorLatido`;
-- если нужен каждый subtick без фильтрации, используйте обычный `@EjecutorLatido`.
+Shortcut из `vida-base` для троттлинга частоты относительно `LatidoPulso` (см. [guides/latidos](../guides/latidos.md)).
 
 ## Потокобезопасность
 
-- `Coordenada`, `Dimension`, `Bioma` и payload'ы `LatidosMundo.*` — иммутабельны.
-- Поток выполнения обработчика по-прежнему определяется `Ejecutor` / `@EjecutorLatido` / `@OyenteDeTick`.
-- `Mundo` сам по себе может быть backed runtime-объектом; thread-safety конкретной реализации определяется движком, но её публичные value-поля должны оставаться согласованными.
+Все value-types и payload-записи `LatidosMundo` иммутабельны. Поток выполнения обработчика задаётся `Ejecutor` / `@EjecutorLatido`. Конкретная реализация `Mundo` может оборачивать игровой уровень — согласованность полей определяет рантайм.
+
+## Проверка док ↔ API
+
+Ниже — самодостаточный compilation unit для задачи `./gradlew vidaDocTest`:
+
+```java
+package dev.vida.docs.mundo;
+
+import dev.vida.core.Identifier;
+import dev.vida.mundo.Bioma;
+import dev.vida.mundo.ChunkCoordenada;
+import dev.vida.mundo.Coordenada;
+import dev.vida.mundo.Dimension;
+import dev.vida.mundo.LimitesVerticales;
+import dev.vida.mundo.Mundo;
+import dev.vida.mundo.MundoEstatico;
+import dev.vida.mundo.RegionCoordenada;
+
+/** Сводка контракта mundo для vidaDocTest. */
+public final class MundoApiStableSnapshot {
+    private MundoApiStableSnapshot() {}
+
+    static void ejemplo() {
+        Coordenada p = new Coordenada(8, 70, -16);
+        ChunkCoordenada ch = p.chunk();
+        RegionCoordenada reg = ch.region();
+        LimitesVerticales lv = Dimension.OVERWORLD.limitesVerticalesPredeterminados();
+        boolean alturaOk = lv.contiene(p);
+
+        Mundo mundo = new MundoEstatico(
+                Identifier.of("docs", "stub"),
+                Dimension.OVERWORLD,
+                18000L,
+                new Bioma(
+                        Identifier.of("minecraft", "forest"),
+                        0.7f,
+                        0.5f,
+                        Bioma.Precipitacion.LLUVIA),
+                false,
+                null);
+
+        boolean enAltura = mundo.enRangoDeAltura(p);
+        long rk = reg.clave();
+        if (alturaOk && enAltura && rk != 0L) {
+            // stub
+        }
+    }
+}
+```
 
 ## Что читать дальше
 
-- [`entidad`](./entidad.md) — регистрация и свойства сущностей.
-- [`guides/first-entity.md`](../guides/first-entity.md) — пример мода с собственной сущностью и подписчиками.
-- [`base-ejecutor`](./base-ejecutor.md) — `Ejecutor`, `@EjecutorLatido`, `LatidoRegistrador`.
+- [`entidad`](./entidad.md) — сущности и связь с миром.
+- [`guides/first-entity.md`](../guides/first-entity.md) — пошаговый пример с `LatidosMundo`.
+- [`base-ejecutor`](./base-ejecutor.md) — регистрация обработчиков.

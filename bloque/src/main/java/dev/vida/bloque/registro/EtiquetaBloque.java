@@ -18,7 +18,7 @@ import java.util.Objects;
  * <p>Само содержимое тега держится в {@link RegistroBloques} и может
  * пополняться модами.
  */
-@ApiStatus.Preview("bloque")
+@ApiStatus.Stable
 public record EtiquetaBloque(Identifier id) {
 
     public EtiquetaBloque {

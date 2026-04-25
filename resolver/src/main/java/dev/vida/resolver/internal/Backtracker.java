@@ -63,6 +63,12 @@ public final class Backtracker {
 
         // Корневые требования — все жёсткие, ANY-range.
         for (String root : roots) {
+            if (!options.accessDeniedIds().isEmpty() && options.accessDeniedIds().contains(root)) {
+                return Result.err(new ResolverError.AccessPolicyDenied(
+                        root,
+                        List.of(ROOT_REQUESTER),
+                        "root mod blocked by access policy (accessDeniedIds)"));
+            }
             state.addRangeConstraint(root,
                     new Constraint(ROOT_REQUESTER, VersionRange.ANY, DependencyKind.REQUIRED, null));
             state.pending.add(root);
@@ -197,6 +203,9 @@ public final class Backtracker {
 
     /** Кандидат не должен противоречить ни одному накопленному ограничению. */
     private boolean candidateMatches(Provider p, String forQuery, SearchState state) {
+        if (!options.accessDeniedIds().isEmpty() && options.accessDeniedIds().contains(p.id())) {
+            return false;
+        }
         List<String> keys = p.provides().isEmpty()
                 ? List.of(p.id())
                 : listOf(p.id(), p.provides());
@@ -329,6 +338,25 @@ public final class Backtracker {
             List<String> reqIds = new ArrayList<>();
             for (Constraint c : constraints) reqIds.add(c.requester());
             return new ResolverError.Missing(id, worst, reqIds);
+        }
+
+        // Все провайдеры в универсе для этого id запрещены политикой — отдельная диагностика.
+        boolean anyAllowedByPolicy = false;
+        for (Provider p : raw) {
+            if (options.accessDeniedIds().isEmpty() || !options.accessDeniedIds().contains(p.id())) {
+                anyAllowedByPolicy = true;
+                break;
+            }
+        }
+        if (!anyAllowedByPolicy) {
+            List<String> reqIds = new ArrayList<>();
+            for (Constraint c : constraints) {
+                reqIds.add(c.requester());
+            }
+            return new ResolverError.AccessPolicyDenied(
+                    id,
+                    reqIds,
+                    "every provider for this id is denied by access policy (accessDeniedIds)");
         }
 
         // Если хотя бы один кандидат проходит по range-ограничениям, но

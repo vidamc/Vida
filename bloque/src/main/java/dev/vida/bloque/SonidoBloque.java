@@ -16,7 +16,7 @@ import java.util.Objects;
  * vanilla {@code SoundEvent}-реестром делается на стороне моста
  * (будущий {@code vida-render}/{@code vida-mundo}).
  */
-@ApiStatus.Preview("bloque")
+@ApiStatus.Stable
 public record SonidoBloque(
         Identifier romper,
         Identifier pisar,

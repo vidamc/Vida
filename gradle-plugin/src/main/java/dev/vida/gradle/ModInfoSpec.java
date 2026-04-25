@@ -45,8 +45,23 @@ public interface ModInfoSpec {
     /** Лицензия (SPDX id). */
     Property<String> getLicense();
 
-    /** Полное имя класса-entrypoint (должен реализовывать {@code VidaMod}). */
+    /**
+     * Устаревший shortcut: один главный entrypoint ({@code VidaMod}).
+     * Объединяется со {@link #getEntrypointsMain()} без дубликатов (первым идёт это значение).
+     */
     Property<String> getEntrypoint();
+
+    /** Точки входа {@code preLaunch} (полные имена классов). */
+    ListProperty<String> getEntrypointsPreLaunch();
+
+    /** Дополнительные точки {@code main} помимо {@link #getEntrypoint()}. */
+    ListProperty<String> getEntrypointsMain();
+
+    /** Точки входа клиента (отложенный запуск после первого тика). */
+    ListProperty<String> getEntrypointsClient();
+
+    /** Точки входа сервера. */
+    ListProperty<String> getEntrypointsServer();
 
     /** Список авторов. */
     ListProperty<String> getAuthors();
@@ -56,6 +71,18 @@ public interface ModInfoSpec {
 
     /** Список {@code .escultor}-файлов (manual class transformers). */
     ListProperty<String> getEscultores();
+
+    /** Пакеты сканирования Vifada (суффиксы как в манифесте). */
+    ListProperty<String> getVifadaPackages();
+
+    /** Путь к JSON-конфигу раскладки Vifada внутри JAR (опционально). */
+    Property<String> getVifadaConfig();
+
+    /** Приоритет морфов Vifada ({@link dev.vida.manifest.VifadaConfig#DEFAULT_PRIORITY} по умолчанию). */
+    Property<Integer> getVifadaPriority();
+
+    /** Имена подключаемых API-модулей Vida ({@code vida-bloque}, …). */
+    ListProperty<String> getModules();
 
     /** Зависимости: {@code id -> version range}. */
     MapProperty<String, String> getDependencies();

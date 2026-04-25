@@ -21,7 +21,7 @@ import java.util.Objects;
  * Для большинства пользовательских блоков подкласс не нужен — достаточно
  * {@link PropiedadesBloque} + запись в {@code Catalogo}.
  */
-@ApiStatus.Preview("bloque")
+@ApiStatus.Stable
 public class Bloque {
 
     private final Identifier id;

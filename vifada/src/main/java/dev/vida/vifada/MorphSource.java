@@ -11,7 +11,7 @@ import java.util.Objects;
  * Источник байткода морфа — имя класса и его {@code .class}-байты.
  * Обычно создаётся дискавери-слоем; для тестов — руками.
  */
-@ApiStatus.Preview("vifada")
+@ApiStatus.Stable
 public record MorphSource(String internalName, byte[] bytes) {
 
     public MorphSource {

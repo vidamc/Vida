@@ -16,8 +16,89 @@
 
 ---
 
-## [0.9.1](https://github.com/vidamc/Vida/compare/v0.9.0...v0.9.1) (2026-04-22)
+## [Unreleased]
 
+### Removed
+
+- Снято поддерево `mods/` (включая `mods/valenta` и прочие демо); исторические описания — в тегах до этой ветки.
+
+### Documentation
+
+- Синхронизированы **`README`**, **`CONTRIBUTING`**, **`docs/getting-started`**, **roadmap / session-roadmap / installer** с пустым опциональным `mods/`, с командами CI (`verifyPlatformProfiles`, `vidaDocTest`, `javadocAll`) и без ссылок на несуществующие демо-артефакты.
+- **`docs/index.md`**: полный каталог всех страниц `docs/` (getting started, архитектура, модули, guides, reference, миграции, безопасность); быстрые входы и сводка стабильности.
+- **`docs/reference/index.md`**, **`docs/guides/index.md`**: расширенные оглавления с назначением каждой страницы.
+- **`docs/faq.md`**, **`docs/troubleshooting.md`**, **`docs/glossary.md`**: навигация, Fuente в troubleshooting, термины.
+
+### Added
+
+#### `vida-mundo`
+
+- **`LimitesVerticales`** — диапазон высот блока и фабрики `overworldVanilla121` / `netherVanilla121` / `endVanilla121` (ориентир Vanilla Java 1.21.x).
+- **`RegionCoordenada`** — индекс файла региона (32×32 чанков); `ChunkCoordenada#region()` и `Coordenada#region()`.
+- **`Mundo`**: `default`-методы `limitesVerticales()`, `enRangoDeAltura(Coordenada)`; **`Dimension#limitesVerticalesPredeterminados()`**; **`MundoEstatico`** — опциональные явные пределы высоты.
+- **`Mundo#bloqueRegistradoEn`**, **`Mundo#bloqueTieneEtiqueta`** (`EtiquetaBloque` из **`vida-bloque`**); клиент **`MundoClienteVanilla`** в `:loader` (`NivelMundoReflect` → реестр блоков + `TagKey`).
+- Документация и пример для `vidaDocTest`: [`docs/modules/mundo.md`](docs/modules/mundo.md), раздел в [`docs/migration/2.0.0.md`](docs/migration/2.0.0.md).
+
+### Changed
+
+#### Roadmap 2.0 «Масштаб»
+
+- **Vifada 2:** `@VifadaMulti`, `@VifadaLocal`, `@VifadaRedirect`, диагностика конфликтов морфов — см. `docs/modules/vifada.md`.
+- **Fuente / data-driven:** каталог `<datapackRoot>/loot_tables/**`; схема `vida:dataDriven` в `docs/reference/manifest-schema.md` (эталонный JAR c datapack — в отдельном репозитории/своей ветке).
+- **Hot reload (dev):** DSL `hotReload`, `CatalogoManejador.reiniciarParaHotReloadDesarrollo()`, `docs/guides/hot-reload.md`.
+- **Installer:** офлайн-кэш embedded loader (`VIDA_INSTALL_CACHE` / `vida.install.cache`), `McArtifacts.downloadHttpResumable` для докачки HTTP.
+- **Telemetry opt-in:** `dev.vida.telemetry.TelemetriaV1` и `docs/security/telemetry-v1.md`.
+- **Миграция и LTS:** `docs/migration/2.0.0.md`; линия 1.x — процедура LTS (см. тот же документ).
+- **CI:** `verifyPlatformProfiles build vidaDocTest`.
+
+- **`LatidoRegistrador`**: после `setAccessible` рантайм-вызов аннотированных методов идёт через **`MethodHandle.unreflect` + `bindTo`**, с запасным путём **`Method.invoke`**, если `unreflect` недоступен (границы модулей).
+- **Платформенный мост** (`VanillaBridge`, `GuiGraphicsFillReflect`, `PlatformBridge.pintorOver`): доступ к `Minecraft` / `Window` / `Level` и к **`GuiGraphics.fill`** — через **закэшированные `MethodHandle`**; при отсутствии подписчиков на `LatidosMundo.Tick` / `LatidoRenderHud` лишние вызовы не выполняются.
+- **`VidaClassTransformer`**: детальные наносекунды в **`EscultorRegistroMetricas`** считаются только при **`-Dvida.loader.profileEscultorNanos=true`**; по умолчанию в агрегаты пишется `0` для длительности (остаются счётчики попаданий).
+
+### Documentation
+
+- Синхронизированы описания Latidos / платформенного моста / Escultor-метрик в `docs/` и `README.md` с фактическим кодом (без устаревших формулировок про «только reflection» и без приписывания шине `LambdaMetafactory`).
+
+---
+
+## [1.0.0] — 2026-04-22
+
+Первая стабильная линия платформы: SemVer для основных модулей API, усиление CI и артефактов релиза.
+
+### Changed
+
+#### API stability (`@Stable`)
+
+- `:base`, `:bloque`, `:objeto`, `:susurro`, `:puertas` — все публичные типы переведены с `@ApiStatus.Preview("<mod>")` на **`@ApiStatus.Stable`**.
+- `:gradle-plugin` — публичные пакеты `dev.vida.gradle` и `dev.vida.gradle.tasks` помечены **`@Stable`**; `dev.vida.gradle.internal` — **`@Internal`**.
+
+#### Documentation
+
+- Синхронизация **`docs/`** с кодом 1.0: модули **`fuente`** / **`escultores`**, поле манифеста **`escultores`**, стабильность Tejido (**`dev.vida.red`**), класс **`BrandingEscultor`** в **`dev.vida.escultores`**, проверка **`vida:dataDriven`** и корня datapack в **`vidaValidateManifest`**, расширенное описание **`Susurro.Politica`**.
+
+### Added
+
+#### Документация и проверки
+
+- **`vidaDocTest`** — задача `./gradlew vidaDocTest` компилирует fenced-примеры из `docs/` с полным `package dev.vida....` через модуль `:vida-doc-test`.
+- **`docs/migration/1.0.0.md`** — миграционные заметки и обещание SemVer.
+- **`docs/security/audit-1.0.md`** — отчёт security/readiness для 1.0.0.
+- **`docs/reference/api-stability.md`** — таблицы критериев выхода из Preview для оставшихся модулей.
+
+#### CI и релиз
+
+- **`jdk-matrix`** в `.github/workflows/ci.yml` — полная сборка на JDK **21, 22, 23, 25** (Ubuntu); логируется вывод `java -version`.
+- **CycloneDX SBOM:** в `release.yml` генерация **`vida-<version>-sbom.cdx.json`** утилитой **Syft** из каталога артефактов перед загрузкой в GitHub Release.
+
+---
+
+## [0.9.5] — 2026-04-22
+
+Промежуточная итерация monorepo между 0.9.0 и 1.0.0; отдельный публичный срез артефактов платформы в этом теге не выделялся.
+
+---
+
+## [0.9.1](https://github.com/vidamc/Vida/compare/v0.9.0...v0.9.1) (2026-04-22)
 
 ### Features
 
@@ -25,89 +106,40 @@
 * Vida 0.9.0 — платформа модов + рендер-мод Valenta ([428c8fb](https://github.com/vidamc/Vida/commit/428c8fbf5c1228926cd2c37e7569c92570c56202))
 * ремаппинг обфусцированных имён для Vifada-морфов ([9eaf41b](https://github.com/vidamc/Vida/commit/9eaf41ba4d063b141d70cccc83bbe0dadeef4f52))
 
-
 ### Bug Fixes
 
 * **ci:** убраны нереализованные native installers из release.yml ([e023dea](https://github.com/vidamc/Vida/commit/e023dea2acf0b8a96e722be098734f3a49db42f2))
 * авто-определение версии Minecraft, права gradlew, Dependency Graph ([b8d21fc](https://github.com/vidamc/Vida/commit/b8d21fc32d95e9305c19f313804dbfc16bec2557))
-
 
 ### Continuous Integration
 
 * авто-мерж PR, расширенный релиз, манифест 0.9.0 ([d1bf7dc](https://github.com/vidamc/Vida/commit/d1bf7dcab16103279cc21267f913290f89cb0f26))
 * авторелиз — release-please включает auto-merge на Release PR ([4599748](https://github.com/vidamc/Vida/commit/45997489af194bdfdbec05da3c511220d18c9eb0))
 
+---
+
 ## [0.9.0] — 2026-04-22
 
-Valenta — Sodium-class rendering optimization mod. Полноценный аналог Sodium + Sodium Extra в одном моде.
+*В теге v0.9.0 поставлялся мод `mods/valenta`; в текущей `main` поддерево `mods/*` снято (см. [Unreleased]).*
+
+Платформа: зафиксированы цели клиентского рендер-мода Sodium-класса (аналог Sodium + Sodium Extra в одном артефакте). Отдельный Gradle-модуль с исходниками в этом репозитории **не подключается**; детали плана — в `docs/session-roadmap.md` (Session 7).
 
 ### Added
 
-#### `:mods:valenta` — render engine
-
-- **Render core** (`dev.vida.mods.valenta.core`):
-  - `CompactVertexFormat` — compact 16-byte vertex format (vs vanilla 28 bytes): position (short3), normal (byte2), color (RGBA8), texcoord (short2). ~43% VRAM bandwidth reduction.
-  - `GpuBuffer` — typed OpenGL buffer object wrapper (VBO, SSBO, etc.) с auto-grow и amortised re-allocation.
-  - `IndirectDrawBuffer` — CPU-side command buffer для `glMultiDrawElementsIndirect`.
-  - `VboMallaBatcher` — mega-VBO batcher: groups all visible sections into one draw call.
-  - `BiomeBlendSsbo` / `BlockLightSsbo` — SSBO-backed per-section biome colors and block light values.
-  - `GlFunctions` — injectable GL abstraction с `Noop` implementation для headless testing.
-
-- **Chunk meshing** (`dev.vida.mods.valenta.chunk`):
-  - `MallaChunk` — immutable mesh record с compact vertex/index data, builder pattern.
-  - `AnalisisEtapa` — render-thread scan: dirty sections sorted by camera distance, priority-capped.
-  - `BuildEtapa` — worker-thread greedy mesher: face culling against opaque neighbours, biome blend + light data generation.
-  - `UploadEtapa` — render-thread transfer: mesh → VBO, biome → SSBO, light → SSBO с per-frame upload cap.
-  - `ChunkTaskGraph` — three-stage orchestrator (`Analisis → Build → Upload`) через `Susurro` с `Etiqueta.de("valenta/chunk")` back-pressure.
-
-- **Culling** (`dev.vida.mods.valenta.culling`):
-  - `ValentaFrustum` — Gribb-Hartmann frustum plane extraction + AABB test (~5 ns/section).
-  - `OcclusionQuery` — GL `SAMPLES_PASSED` с one-frame-delayed readback и conditional render support.
-  - `PvsTree` — Potentially Visible Set via portal flood-fill; compressed sorted-key entries.
-  - `CullingEngine` — three-tier gate (PVS → Frustum → Occlusion) с per-frame statistics.
-
-- **Sky** (`dev.vida.mods.valenta.sky`):
-  - `SkyRenderer` — `glInvalidateFramebuffer` when camera fully enclosed by opaque geometry.
-
-- **Quality of life** (`dev.vida.mods.valenta.quality`):
-  - `ParticleFilter` — none / reduce (every Nth) / hide all particles.
-  - `CloudRenderer` — vanilla / fast (flat planes) / disabled.
-  - `AnimatedTextureManager` — toggle animated texture ticking.
-  - `RenderDistanceManager` — smooth ±1 section/4 frames transitions, minimum safe distance.
-  - `GpuTimingPane` — F3 debug pane with per-pass nanosecond timings.
-
-- **Vifada morphs** (`dev.vida.mods.valenta.escultor`):
-  - `LevelRendererMorph` (priority 900) — hooks `setupRender` и `renderLevel`.
-  - `GameRendererMorph` (priority 900) — hooks `renderLevel`, applies render distance override.
-  - `ChunkRendererMorph` (priority 900) — redirects `SectionRenderDispatcher.runTask`.
-  - `ParticleMorph` (priority 800) — `ParticleEngine.add` filter.
-  - `CloudMorph` (priority 800) — `LevelRenderer.renderClouds` skip/replace.
-  - `ValentaHooks` — static hook registry с volatile null-check pattern, zero-alloc hot path.
-  - Все морфы используют `requireTarget = false` для graceful degradation.
-
-- **Debug** (`dev.vida.mods.valenta.debug`):
-  - `ValentaDebugComando` — `/valenta debug occlusion|gpu|stats`.
-  - `OcclusionOverlay` — HUD overlay визуализации culling statistics.
-
-- **Configuration**: `valenta.toml` с секциями `[render]`, `[chunks]`, `[culling]`, `[sky]`, `[quality]`, `[debug]`.
-- **Puertas**: `valenta.ptr` — ~30 vanilla access-wideners для renderer injection.
-- **MC stubs**: compile-only заглушки `LevelRenderer`, `GameRenderer`, `SectionRenderDispatcher`, `Frustum`, `ParticleEngine`, `GlStateManager` и др.
+- Дорожная карта по render core (компактный vertex-format, mega-VBO, `glMultiDrawElementsIndirect`, SSBO), chunk meshing через `Susurro` (`Analisis → Build → Upload`), culling (frustum, occlusion queries, PVS), sky/QoL, Vifada-морфы и отладочный HUD — без публикации JAR из данного дерева.
 
 ### Tests
 
-- Unit tests: `CompactVertexFormatTest`, `GpuBufferTest`, `IndirectDrawBufferTest`, `VboMallaBatcherTest`, `AnalisisEtapaTest`, `ValentaFrustumTest`, `OcclusionQueryTest`, `PvsTreeTest`, `ParticleFilterTest`, `RenderDistanceManagerTest`, `ValentaConfigTest`.
-- Property-based (jqwik): `MallaChunkPropertyTest` — vertex buffer sizing, index divisibility, section key uniqueness, builder invariants.
+- Каталог версий: jqwik (property-based), JMH, LWJGL — для модулей, которым нужны эти зависимости.
 
 ### Benchmarks
 
-- JMH suite: `VertexFormatBenchmark` (encode/decode throughput), `CullingBenchmark` (frustum 10K sections), `MeshingBenchmark` (sparse/dense/solid sections).
+- JMH остаётся в `libs.versions.toml` для будущих бенчмарков клиентского рендера.
 
 ### Documentation
 
-- `mods/valenta/README.md` — features, config, build instructions, benchmark commands.
-- `mods/valenta/CHANGELOG.md` — initial release notes.
-- `docs/mods/valenta/architecture.md` — internal design: pipeline flow, vertex format, multi-draw indirect, culling tiers, threading model.
-- `docs/mods/valenta/compat-matrix.md` — tested configurations, known conflicts, GPU driver notes.
+- `docs/session-roadmap.md` — Session 7.
+- `docs/roadmap.md`, `docs/index.md`, `docs/modules/installer.md` — согласованы с отсутствием отдельного мода в монорепо.
 
 ---
 
@@ -157,7 +189,7 @@ Valenta — Sodium-class rendering optimization mod. Полноценный ан
 ### Notes
 
 - Сигнатура `Gui.render` совпадает с Minecraft 1.20.5+ (Mojang-mapped). Для других версий морф молча пропускается благодаря `requireTarget=false`; пользовательский мод при желании может добавить свой морф с нужной сигнатурой и переопределить поведение — `VanillaBridge.install(...)` допускает подмену.
-- `LatidoRenderHud` теперь доставляется любому подписчику без участия `Saciedad`/`Senda`/прочих модов. Поэтому `mods/saciedad/.../InGameHudDispatchMorph.java` остаётся в репозитории как референс, но функционально дублирован платформенным морфом и может быть удалён в одном из следующих релизов.
+- `LatidoRenderHud` доставляется любому подписчику через платформенный `GuiRenderMorph` + `VanillaBridge` без обязательных морфов в пользовательских модах.
 
 ---
 
@@ -233,7 +265,7 @@ Valenta — Sodium-class rendering optimization mod. Полноценный ан
 
 #### Loader — data-driven mods prototype
 
-- Новый пакет `dev.vida.loader.fuente`:
+- Новый модуль **`:fuente`**, пакет `dev.vida.fuente`:
   - `FuentePrototipoParser`
   - `FuenteContenidoMod`
   - `FuenteBloque`, `FuenteObjeto`, `FuenteRecetaShaped`
@@ -331,7 +363,7 @@ Modrinth App и CurseForge App в инсталляторе.
 - `VigiaComando` — контракт команды `/vida profile start|stop|dump` для loader'а.
 - Интеграция с `Susurro.Estadisticas` — при привязке пула через `sesion.conSusurro(s)` в Resumen попадают activos/pendientes/completadas.
 
-#### `base` — Reflection-биндер для `@EjecutorLatido`
+#### `base` — биндер аннотаций для `@EjecutorLatido`
 
 - **`LatidoRegistrador.registrarEnObjeto(bus, instance, susurro, hp)`** — сканирует методы, помеченные `@EjecutorLatido`, создаёт правильный `Ejecutor` (SINCRONO / SUSURRO / HILO_PRINCIPAL), подписывает с корректной `Prioridad`/`Fase`. Одна строка вместо ручных `suscribir(...)`.
 - Валидация сигнатуры: ровно один параметр, присваиваемый типу события из `static final Latido<E>` поля класса события (конвенция `TIPO`) или класса-владельца.
@@ -425,7 +457,7 @@ Modrinth App и CurseForge App в инсталляторе.
   - Фабрики: `hiloPrincipal(HiloPrincipal)`, `susurro(Susurro, Prioridad, Etiqueta)`, `serializado(String)` (однопоточный FIFO).
 - **Новая перегрузка** `LatidoBus.suscribir(Latido, Prioridad, Fase, Ejecutor, Oyente)`. Все предыдущие `suscribir(...)`-вызовы сохранены и трактуются как `Ejecutor.SINCRONO` — **обратная совместимость API 0.1.x не нарушена**.
 - `DefaultLatidoBus` использует `Ejecutor.ejecutar(Runnable)` вне critical-path; ошибки подписчиков ловятся и логируются, как и раньше.
-- **`@EjecutorLatido(kind, etiqueta, prioridad)`** — аннотация-маркер метода для будущего reflection-биндера (0.4.x).
+- **`@EjecutorLatido(kind, etiqueta, prioridad)`** — аннотация-маркер метода для последующего авто-биндинга через `LatidoRegistrador` (0.4.x).
 - Асинхронные подписчики на отменяемые события логируются с предупреждением (их решения об отмене игнорируются — гарантия согласованности потока эмиссии).
 
 #### Тулчейн

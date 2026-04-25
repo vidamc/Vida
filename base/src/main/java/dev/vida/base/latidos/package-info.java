@@ -18,7 +18,10 @@
  * <p>Каждый {@link dev.vida.base.latidos.Oyente Oyente} регистрируется
  * на конкретный {@link dev.vida.base.latidos.Latido Latido} с заданной
  * {@link dev.vida.base.latidos.Prioridad Prioridad} и
- * {@link dev.vida.base.latidos.Fase Fase}.
+ * {@link dev.vida.base.latidos.Fase Fase}. При {@code emitir} шина обходит
+ * снимок подписчиков и вызывает {@code manejar} напрямую — без рефлексии.
+ * Авто-биндер {@link dev.vida.base.latidos.LatidoRegistrador} после разрешения
+ * метода по возможности использует {@link java.lang.invoke.MethodHandle}.
  *
  * <p>Для отменяемых событий параметр события должен реализовывать
  * {@link dev.vida.base.latidos.LatidoCancelable LatidoCancelable}; приёмники
@@ -42,7 +45,7 @@
  * bus.emitir(LatidoSaludo.TIPO, new LatidoSaludo("Mundo"));
  * }</pre>
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 package dev.vida.base.latidos;
 
 import dev.vida.core.ApiStatus;

@@ -31,7 +31,7 @@ import java.util.Optional;
  * загрузчика незаконно. Повторная установка бросает
  * {@link IllegalStateException}.
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public final class LatidoGlobal {
 
     private static volatile LatidoBus INSTANCE;

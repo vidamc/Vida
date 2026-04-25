@@ -73,6 +73,7 @@ public final class ManifestParser {
         VifadaConfig vifada = VifadaConfig.EMPTY;
         List<String> puertas = List.of();
         List<String> modules = List.of();
+        List<EscultorDeclaracion> escultores = List.of();
         List<String> incompatibilities = List.of();
         Map<String, Object> custom = Map.of();
 
@@ -130,6 +131,11 @@ public final class ManifestParser {
                         if (res.isErr()) return Result.err(res.unwrapErr());
                         modules = res.unwrap();
                     }
+                    case "escultores" -> {
+                        var res = parseEscultores(in);
+                        if (res.isErr()) return Result.err(res.unwrapErr());
+                        escultores = res.unwrap();
+                    }
                     case "custom" -> {
                         var res = readGenericObject(in);
                         if (res.isErr()) return Result.err(res.unwrapErr());
@@ -168,6 +174,7 @@ public final class ManifestParser {
                     .vifada(vifada)
                     .puertas(puertas)
                     .modules(modules)
+                    .escultores(escultores)
                     .incompatibilities(incompatibilities)
                     .custom(custom)
                     .build();
@@ -289,6 +296,43 @@ public final class ManifestParser {
     }
 
     // --------------------------------------------------------------- vifada
+
+    private static Result<List<EscultorDeclaracion>, ManifestError> parseEscultores(JsonReader in) {
+        if (in.peek() != JsonToken.BEGIN_ARRAY) {
+            return Result.err(new ManifestError.WrongType("escultores", "array", tokenName(in.peek())));
+        }
+        in.beginArray();
+        List<EscultorDeclaracion> out = new ArrayList<>();
+        while (in.hasNext()) {
+            JsonToken t = in.peek();
+            if (t == JsonToken.STRING) {
+                out.add(EscultorDeclaracion.of(in.nextString()));
+            } else if (t == JsonToken.BEGIN_OBJECT) {
+                in.beginObject();
+                String clazz = null;
+                int priority = 0;
+                while (in.hasNext()) {
+                    String field = in.nextName();
+                    switch (field) {
+                        case "class", "className", "fqn" -> clazz = in.nextString();
+                        case "priority" -> priority = in.nextInt();
+                        default -> in.skipValue();
+                    }
+                }
+                in.endObject();
+                if (clazz == null || clazz.isBlank()) {
+                    return Result.err(new ManifestError.InvalidValue(
+                            "escultores[]", "object requires non-blank \"class\""));
+                }
+                out.add(new EscultorDeclaracion(clazz, priority));
+            } else {
+                return Result.err(new ManifestError.WrongType(
+                        "escultores[]", "string or object", tokenName(t)));
+            }
+        }
+        in.endArray();
+        return Result.ok(List.copyOf(out));
+    }
 
     private static Result<VifadaConfig, ManifestError> parseVifada(JsonReader in) {
         if (in.peek() != JsonToken.BEGIN_OBJECT) {

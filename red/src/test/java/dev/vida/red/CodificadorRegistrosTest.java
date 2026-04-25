@@ -24,6 +24,19 @@ class CodificadorRegistrosTest {
     }
 
     @Test
+    void roundtrip_paquete_bloque_entidad_estado() {
+        CodecPaquete<PaqueteBloqueEntidadEstado> codec =
+                CodificadorRegistros.para(PaqueteBloqueEntidadEstado.class);
+        PaqueteBloqueEntidadEstado origen =
+                new PaqueteBloqueEntidadEstado(Identifier.of("demo", "caja"), 0x1122334455667788L, new byte[] {1, 2, 3});
+
+        byte[] bytes = codec.codificar(origen);
+        PaqueteBloqueEntidadEstado restaurado = codec.decodificar(bytes);
+
+        assertThat(restaurado).isEqualTo(origen);
+    }
+
+    @Test
     void rechaza_campos_no_soportados() {
         assertThatThrownBy(() -> CodificadorRegistros.para(PaqueteInvalido.class))
                 .isInstanceOf(IllegalArgumentException.class)

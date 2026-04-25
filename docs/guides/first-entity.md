@@ -122,5 +122,5 @@ public final class BosqueMod implements VidaMod {
 ## Куда дальше
 
 - [`modules/entidad.md`](../modules/entidad.md) — полный обзор entity API.
-- [`modules/mundo.md`](../modules/mundo.md) — мир, координаты и world-латидосы.
+- [`modules/mundo.md`](../modules/mundo.md) — мир, координаты (`Coordenada` / чанк / регион), высотные пределы `LimitesVerticales`, world-латидосы (`MundoCargado`, `ChunkCargado`, `ChunkDescargado`, `Tick`, …).
 - [`guides/latidos.md`](./latidos.md) — приоритеты, фазы и `Ejecutor`.

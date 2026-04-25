@@ -17,7 +17,7 @@ import java.util.Objects;
  * и т.д. Все ошибки содержат {@link #metodo() ссылку на проблемный метод}
  * для удобства диагностики.
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public sealed class LatidoRegistradorError extends RuntimeException {
 
     private final Method metodo;
@@ -135,6 +135,16 @@ public sealed class LatidoRegistradorError extends RuntimeException {
 
         public Class<?> esperado() { return esperado; }
         public Class<?> actual() { return actual; }
+    }
+
+    /**
+     * {@link LatidosProfundos} без {@link EjecutorLatido} — маркер бесполезен.
+     */
+    public static final class MarcadorLatidosProfundosSinEjecutor extends LatidoRegistradorError {
+        public MarcadorLatidosProfundosSinEjecutor(Method m) {
+            super(m, "@LatidosProfundos " + ubicacion(m)
+                    + " требует @EjecutorLatido (или @OyenteDeTick)");
+        }
     }
 
     /**

@@ -18,7 +18,7 @@ import java.lang.annotation.Target;
  * самого метода морфа; при необходимости их можно уточнить через
  * {@link #method()}.
  */
-@ApiStatus.Preview("vifada")
+@ApiStatus.Stable
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.METHOD)
 public @interface VifadaOverwrite {

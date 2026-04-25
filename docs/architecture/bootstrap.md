@@ -63,22 +63,29 @@ Boot-Class-Path:
 | `log.level`         | уровень логгера `vida.*`                     | `INFO`       |
 | `debug.dumpClasses` | сохранять патченные классы в `<data>/dumps/` | `false`      |
 
+Дополнительно для профилей платформы см. `-Dvida.platformProfile`, `-Dvida.minecraftVersion`, `-Dvida.clientJar` в документации [modules/platform-profiles.md](../modules/platform-profiles.md).
+
 
 ## `BootSequence`
 
+Цепочка в коде (упрощённо, см. `dev.vida.loader.internal.BootSequence`):
+
 ```
 BootSequence.run(options, inst):
-    1. Log.init(options)
-    2. report = ModScanner.scan(options.modsDir())
-    3. manifests = ManifestParser.parseAll(report.successes())
-    4. universe = ManifestAdapter.toUniverse(manifests)
-    5. resolution = Resolver.resolve(universe, report.roots(), options.resolver())
-    6. morphIndex = MorphIndex.build(resolution, options)
-    7. inst.addTransformer(new VidaClassTransformer(morphIndex), /*canRetransform*/ false)
-    8. BootRegistry.publish(resolution, morphIndex)  // для base-модуля
+    0. (опционально) загрузить профиль платформы; проверить minimumJavaVersion и clientJar.sha256
+    1. Discovery: ModScanner по modsDir и extraSources
+    2. Resolver.resolve с синтетическими провайдерами vida / minecraft / java
+    3. Data-driven prototype-контент (Fuente) по резолвнутым манифестам
+    4. Сбор MorphIndex: платформенные морфы + морфы модов (фильтр custom.vida.platformProfileIds)
+    5. Загрузка client_mappings → obf-карта + дерево Cartografía; fingerprint кеша дополняется id профиля
+    6. VidaClassTransformer, JuegoLoader, ModLoader'ы модов, декларативные Escultor'ы
+    7. instrumentation.addTransformer(...) при наличии Agent
+    8. LatidoBus, PlatformBridge через PlatformBridgeSupport из дескриптора (или VanillaBridge)
+    9. Entrypoint'ы модов
+    10. Сборка VidaEnvironment и возврат BootReport
 ```
 
-Шаги 2–5 строго последовательны: без полной резолюции нельзя знать, какие морфы применять. Внутри шагов много параллелизма:
+Шаги discovery → resolve → fuente → морфы → маппинги → трансформер строго упорядочены: индекс морфов и Cartografía нужны до загрузки игровых классов через `JuegoLoader`. Внутри отдельных шагов возможен ограниченный параллелизм (скан jar, и т.д.):
 
 - Скан — по одному воркеру на jar.
 - Парсинг манифестов — `parallelStream()` по успешным кандидатам.

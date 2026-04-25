@@ -23,12 +23,25 @@ import java.nio.file.Path;
  *       {@link java.io.File#pathSeparatorChar};</li>
  *   <li>{@code vida.extraSources}    — аналогично для дополнительных
  *       источников модов;</li>
- *   <li>{@code vida.strict}          — {@code true/false}.</li>
+ *   <li>{@code vida.strict}          — {@code true/false};</li>
+ *   <li>{@code vida.accessDenied}    — запрещённые id модов через запятую
+ *       (политика резолвера, см. {@link BootOptions#accessDeniedIds()});</li>
+ *   <li>{@code vida.platformProfile} — идентификатор профиля платформы Vida
+ *       (например {@code legacy-121/1.21.1}), см. {@link BootOptions#platformProfileId()};</li>
+ *   <li>{@code vida.clientJar}        — путь к vanilla client JAR: если в профиле задан
+ *       {@code clientJar.sha256}, Vida сравнивает хэш файла с дескриптором (см. {@code BootSequence}).
+ *       Иначе, при ровно одном {@code gameJars}, для проверки используется этот jar.</li>
  * </ul>
  *
  * <p>Формат {@code agentArgs}: пары {@code key=value}, разделённые
- * запятой, например {@code modsDir=./mods,strict=true}. Системные
- * свойства переопределяются значениями из {@code agentArgs}.
+ * запятой, например {@code modsDir=./mods,strict=true} или {@code accessDenied=badmod}
+ * (для нескольких id см. {@code -Dvida.accessDenied} — см. {@link BootOptions}).
+ * Системные свойства переопределяются значениями из {@code agentArgs}.
+ *
+ * <p>Несколько {@code -javaagent}: порядок вызова {@code premain} совпадает с
+ * порядком аргументов JVM. Vida не захватывает глобальные блокировки в
+ * статических инициализаторах между агентами — только локальные структуры
+ * загрузчика.
  *
  * <p>Если {@code modsDir} не задан явно и {@code skipDiscovery} не выставлен,
  * агент пытается авто-определить директорию модов: проверяет, существует ли
@@ -82,6 +95,14 @@ public final class VidaPremain {
         String skipDisc   = System.getProperty("vida.skipDiscovery");
         String vidaVer    = System.getProperty("vida.version");
         String mcVer      = System.getProperty("vida.minecraftVersion");
+        if (mcVer == null || mcVer.isBlank()) {
+            String alt = System.getProperty("vida.minecraft.version");
+            if (alt != null && !alt.isBlank()) {
+                mcVer = alt;
+            }
+        }
+        String pfProfile  = System.getProperty("vida.platformProfile");
+        String accessDenied = System.getProperty("vida.accessDenied");
 
         // agentArgs перекрывает системные свойства.
         if (agentArgs != null && !agentArgs.isBlank()) {
@@ -99,6 +120,8 @@ public final class VidaPremain {
                     case "skipDiscovery"    -> skipDisc = v;
                     case "vidaVersion"      -> vidaVer = v;
                     case "minecraftVersion" -> mcVer = v;
+                    case "platformProfile"  -> pfProfile = v;
+                    case "accessDenied"     -> accessDenied = v;
                     default -> LOG.warn("Vida: unknown agent arg '{}'", k);
                 }
             }
@@ -112,6 +135,10 @@ public final class VidaPremain {
         if (parseBool(skipDisc)) b.skipDiscovery(true);
         if (vidaVer != null) b.vidaVersion(vidaVer);
         if (mcVer   != null) b.minecraftVersion(mcVer);
+        if (pfProfile != null) b.platformProfile(pfProfile);
+        for (String id : BootOptions.parseCommaSeparatedIds(accessDenied)) {
+            b.addAccessDenied(id);
+        }
 
         return b.build();
     }

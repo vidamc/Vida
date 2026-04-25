@@ -6,7 +6,9 @@ package dev.vida.loader;
 
 import dev.vida.core.ApiStatus;
 import dev.vida.core.Log;
+import dev.vida.telemetry.TelemetriaV1;
 import dev.vida.loader.internal.BootSequence;
+import dev.vida.loader.internal.DesarrolloHotReloadServicio;
 import java.lang.instrument.Instrumentation;
 import java.util.Objects;
 
@@ -22,7 +24,7 @@ import java.util.Objects;
  * {@link VidaRuntime#current()}. Повторный запуск в том же процессе не
  * поддерживается.
  */
-@ApiStatus.Preview("loader")
+@ApiStatus.Stable
 public final class VidaBoot {
 
     private static final Log LOG = Log.of(VidaBoot.class);
@@ -47,6 +49,8 @@ public final class VidaBoot {
         BootReport report = BootSequence.run(options, parent, inst);
         if (report.isOk()) {
             VidaRuntime.install(report.environment());
+            TelemetriaV1.registrarArranqueFrioNanos(report.duration().toNanos());
+            DesarrolloHotReloadServicio.maybeStart();
             LOG.info("Vida boot OK in {} ms: {} mods, {} morph-targets, {} morphs",
                     report.duration().toMillis(),
                     report.environment().resolvedMods().size(),

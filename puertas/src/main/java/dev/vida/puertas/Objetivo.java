@@ -9,7 +9,7 @@ import dev.vida.core.ApiStatus;
 /**
  * Категория целевого члена директивы.
  */
-@ApiStatus.Preview("puertas")
+@ApiStatus.Stable
 public enum Objetivo {
     CLASE,
     METODO,

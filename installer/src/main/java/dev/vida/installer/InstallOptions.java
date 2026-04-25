@@ -4,6 +4,7 @@
  */
 package dev.vida.installer;
 
+import dev.vida.installer.mc.VidaInstallerJvm;
 import dev.vida.installer.launchers.LauncherKind;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -26,7 +27,9 @@ import java.util.Objects;
  *                              режима «create new».
  * @param instanceName          желаемое имя нового instance'а (для лаунчеров, поддерживающих
  *                              создание). {@code null} → дефолтное имя вида «Vida 1.21.1».
- * @param minecraftVersion      версия Minecraft (идёт в {@code inheritsFrom})
+ * @param minecraftVersion      версия Minecraft (идёт в {@code inheritsFrom}):
+ *                              {@code 1.21.1+} в линии 1.21, {@code 26.1.0}–{@code 26.1.2} или
+ *                              {@code 26.1.preview} (см. {@link dev.vida.installer.mc.VidaInstallerJvm})
  * @param loaderVersion         версия loader'а (идёт в Maven-координаты)
  * @param createLauncherProfile добавлять ли запись в {@code launcher_profiles.json}
  *                              (только для {@link LauncherKind#MOJANG})
@@ -83,6 +86,11 @@ public record InstallOptions(
         public Builder overwrite(boolean v)              { this.overwrite = v; return this; }
 
         public InstallOptions build() {
+            if (!VidaInstallerJvm.isSupportedGameVersion(minecraftVersion)) {
+                throw new IllegalArgumentException(
+                        "Unsupported Minecraft version '" + minecraftVersion
+                                + "'. Supported: 1.21.1–1.21.x, 26.1.0–26.1.2, or 26.1.preview.");
+            }
             return new InstallOptions(launcherKind, installDir, targetInstance, instanceName,
                     minecraftVersion, loaderVersion,
                     createLauncherProfile, createLaunchScript, dryRun, overwrite);

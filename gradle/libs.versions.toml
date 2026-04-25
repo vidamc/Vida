@@ -8,6 +8,12 @@
 # JDK целевой платформы
 java = "21"
 
+# Skal Launcher (Kotlin + Compose Desktop)
+kotlin       = "2.0.21"
+compose-mp   = "1.7.3"
+coroutines   = "1.9.0"
+serialization-json = "1.7.3"
+
 # Тесты
 junit        = "5.11.4"
 assertj      = "3.27.3"
@@ -25,13 +31,13 @@ tomlj        = "1.1.1"
 # Database (installer — Modrinth handler)
 sqlite-jdbc  = "3.47.1.0"
 
-# Property-based testing (Valenta)
+# Property-based testing (моды / рендер)
 jqwik        = "1.9.2"
 
-# Benchmarks (Valenta)
+# Benchmarks (JMH)
 jmh          = "1.37"
 
-# LWJGL (Valenta headless GL stubs)
+# LWJGL (headless GL / клиентские тесты)
 lwjgl        = "3.3.4"
 
 # Gradle plugins
@@ -39,6 +45,11 @@ spotless     = "7.0.2"
 errorprone   = "4.1.0"
 
 [libraries]
+# ---- Skal Launcher ----
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "coroutines" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization-json" }
+
 # ---- ASM (Vifada/Escultores/Cartografía) ----
 asm          = { module = "org.ow2.asm:asm",          version.ref = "asm" }
 asm-tree     = { module = "org.ow2.asm:asm-tree",     version.ref = "asm" }
@@ -72,6 +83,7 @@ jmh-annprocess  = { module = "org.openjdk.jmh:jmh-generator-annprocess",    vers
 
 # ---- LWJGL (headless GL for tests) ----
 lwjgl            = { module = "org.lwjgl:lwjgl",             version.ref = "lwjgl" }
+lwjgl-glfw       = { module = "org.lwjgl:lwjgl-glfw",        version.ref = "lwjgl" }
 lwjgl-opengl     = { module = "org.lwjgl:lwjgl-opengl",      version.ref = "lwjgl" }
 
 [bundles]
@@ -81,3 +93,8 @@ junit    = ["junit-jupiter", "junit-jupiter-params", "assertj-core"]
 [plugins]
 spotless   = { id = "com.diffplug.spotless",  version.ref = "spotless" }
 errorprone = { id = "net.ltgt.errorprone",    version.ref = "errorprone" }
+
+kotlin-jvm          = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-compose      = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+jetbrains-compose   = { id = "org.jetbrains.compose", version.ref = "compose-mp" }

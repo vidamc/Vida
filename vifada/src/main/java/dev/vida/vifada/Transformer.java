@@ -6,6 +6,7 @@ package dev.vida.vifada;
 
 import dev.vida.core.ApiStatus;
 import dev.vida.core.Result;
+import dev.vida.vifada.MorphMethodResolution;
 import dev.vida.vifada.internal.MorphApplier;
 import dev.vida.vifada.internal.MorphDescriptor;
 import dev.vida.vifada.internal.MorphParser;
@@ -26,7 +27,7 @@ import org.objectweb.asm.tree.ClassNode;
  * применяется за один проход {@link ClassReader}→{@link ClassNode}→
  * {@link ClassWriter}.
  */
-@ApiStatus.Preview("vifada")
+@ApiStatus.Stable
 public final class Transformer {
 
     private Transformer() {}
@@ -40,6 +41,19 @@ public final class Transformer {
      *                    у которых {@code target} совпадает с текущим классом)
      */
     public static TransformReport transform(byte[] targetBytes, Collection<MorphSource> morphs) {
+        return transform(targetBytes, morphs, null, null);
+    }
+
+    /**
+     * @param morphTargetClassInternal внутреннее имя класса в Mojmap (как в {@code @VifadaMorph#target}),
+     *                                   если байткод использует обфусцированное {@code ClassNode#name}
+     * @param methodResolution          резолв Mojmap → obf для имён методов; может быть {@code null}
+     */
+    public static TransformReport transform(
+            byte[] targetBytes,
+            Collection<MorphSource> morphs,
+            String morphTargetClassInternal,
+            MorphMethodResolution methodResolution) {
         Objects.requireNonNull(targetBytes, "targetBytes");
         Objects.requireNonNull(morphs, "morphs");
 
@@ -50,13 +64,17 @@ public final class Transformer {
         } catch (RuntimeException ex) {
             return new TransformReport(null, List.of(),
                     List.of(new VifadaError.AsmFailure("<target>",
-                            "failed to read target bytes: " + ex.getMessage())));
+                            "failed to read target bytes: " + ex.getMessage())),
+                    List.of());
         }
 
         // Парсим все морфы.
         List<MorphDescriptor> descriptors = new ArrayList<>(morphs.size());
         List<VifadaError> errors = new ArrayList<>();
         List<String> applied = new ArrayList<>();
+        List<MorphSkip> skipped = new ArrayList<>();
+
+        String matchKey = morphTargetClassInternal != null ? morphTargetClassInternal : target.name;
 
         for (MorphSource src : morphs) {
             Result<MorphDescriptor, VifadaError> r =
@@ -66,18 +84,23 @@ public final class Transformer {
                 continue;
             }
             MorphDescriptor d = r.unwrap();
-            // Отбрасываем морфы, которые не про этот таргет.
-            if (!d.targetInternal.equals(target.name)) continue;
+            if (!d.targetInternal.equals(matchKey)) {
+                skipped.add(new MorphSkip(
+                        d.morphInternal,
+                        "target mismatch: morph declares " + d.targetInternal + " but transforming "
+                                + matchKey));
+                continue;
+            }
             descriptors.add(d);
         }
 
         if (descriptors.isEmpty()) {
-            // Нечего применять — отдадим исходные байты as-is.
-            return new TransformReport(targetBytes, List.of(), errors);
+            return new TransformReport(targetBytes, List.of(), errors, skipped);
         }
 
         // Применяем.
-        List<VifadaError> applyErrors = MorphApplier.apply(target, descriptors);
+        List<VifadaError> applyErrors =
+                MorphApplier.apply(target, descriptors, morphTargetClassInternal, methodResolution);
         errors.addAll(applyErrors);
         for (MorphDescriptor d : descriptors) applied.add(d.morphInternal);
 
@@ -102,9 +125,9 @@ public final class Transformer {
         } catch (RuntimeException ex) {
             errors.add(new VifadaError.AsmFailure("<target>",
                     "failed to write transformed class: " + ex.getMessage()));
-            return new TransformReport(null, applied, errors);
+            return new TransformReport(null, applied, errors, skipped);
         }
 
-        return new TransformReport(out, applied, errors);
+        return new TransformReport(out, applied, errors, skipped);
     }
 }

@@ -10,7 +10,7 @@
  * Minecraft runtime разный, а явное разделение даёт более строгую
  * типизацию для модов и для будущей сериализации.
  */
-@ApiStatus.Preview("entidad")
+@ApiStatus.Stable
 package dev.vida.entidad.componentes;
 
 import dev.vida.core.ApiStatus;

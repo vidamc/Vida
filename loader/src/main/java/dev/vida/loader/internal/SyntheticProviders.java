@@ -8,6 +8,7 @@ import dev.vida.core.ApiStatus;
 import dev.vida.core.Log;
 import dev.vida.core.Version;
 import dev.vida.loader.BootOptions;
+import dev.vida.loader.profile.PlatformProfileDescriptor;
 import dev.vida.resolver.Provider;
 import java.io.IOException;
 import java.io.InputStream;
@@ -34,10 +35,9 @@ import java.util.Set;
  *   <li><b>vida</b> — {@link BootOptions#vidaVersion()} или встроенный ресурс
  *       {@code META-INF/vida/loader-version.properties} (ключ {@code version}),
  *       который заполняется процессом сборки из корневого {@code version.txt}.</li>
- *   <li><b>minecraft</b> — только {@link BootOptions#minecraftVersion()}.
- *       Если версия не задана — провайдер пропускается (моды с
- *       {@code required.minecraft} осознанно падают с Missing, указывая на
- *       недостающую настройку лончера).</li>
+ *   <li><b>minecraft</b> — {@link BootOptions#minecraftVersion()}, иначе (если задан)
+ *       {@code gameVersion} из активного {@linkplain PlatformProfileDescriptor профиля платформы},
+ *       иначе авто-детект из {@code version.json} на classpath игры.</li>
  *   <li><b>java</b> — {@code System.getProperty("java.specification.version")};
  *       "21" канонизируется в "21.0.0".</li>
  * </ul>
@@ -73,8 +73,18 @@ public final class SyntheticProviders {
      * @return плоский список провайдеров, готовых к {@code Universe.Builder#add}
      */
     public static List<Provider> build(BootOptions options, Set<String> existingIds) {
+        return build(options, existingIds, Optional.empty());
+    }
+
+    /**
+     * @param profile активный профиль платформы (если есть) — участвует в разрешении синтетического
+     *                {@code minecraft} через {@link PlatformProfileDescriptor#gameVersion()}
+     */
+    public static List<Provider> build(BootOptions options, Set<String> existingIds,
+            Optional<PlatformProfileDescriptor> profile) {
         Objects.requireNonNull(options, "options");
         Objects.requireNonNull(existingIds, "existingIds");
+        Objects.requireNonNull(profile, "profile");
 
         List<Provider> out = new ArrayList<>(3);
 
@@ -84,7 +94,7 @@ public final class SyntheticProviders {
             LOG.info("Vida synthetic provider: vida={}", v);
         }
         if (!existingIds.contains("minecraft")) {
-            Optional<Version> mc = resolveMinecraftVersion(options);
+            Optional<Version> mc = resolveMinecraftVersion(options, profile);
             mc.ifPresent(v -> {
                 out.add(Provider.builder("minecraft", v).build());
                 LOG.info("Vida synthetic provider: minecraft={}", v);
@@ -109,8 +119,16 @@ public final class SyntheticProviders {
     }
 
     static Optional<Version> resolveMinecraftVersion(BootOptions options) {
+        return resolveMinecraftVersion(options, Optional.empty());
+    }
+
+    static Optional<Version> resolveMinecraftVersion(BootOptions options,
+            Optional<PlatformProfileDescriptor> profile) {
         Optional<Version> explicit = options.minecraftVersion().flatMap(SyntheticProviders::tryCanonicalize);
         if (explicit.isPresent()) return explicit;
+        Optional<Version> fromProfile =
+                profile.flatMap(p -> tryCanonicalize(p.gameVersion()));
+        if (fromProfile.isPresent()) return fromProfile;
         return detectMinecraftVersionFromClasspath();
     }
 

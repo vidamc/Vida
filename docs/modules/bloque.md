@@ -4,9 +4,9 @@ API описания блоков. Side-agnostic data-модель: `Bloque` + `
 
 - Пакет: `dev.vida.bloque`
 - Gradle: `dev.vida:vida-bloque`
-- Стабильность: `@ApiStatus.Preview("bloque")`
+- Стабильность: **`@ApiStatus.Stable`** с 1.0.0
 
-Модуль появился в 0.3.0 и пока стоит в статусе preview: мы хотим обкатать decisions вокруг tag-системы и формы коллизии на реальных модах до заморозки.
+Модуль появился в 0.3.0; публичный API заморожен по SemVer начиная с линии 1.x (см. [reference/api-stability.md](../reference/api-stability.md)).
 
 ```kotlin
 dependencies {

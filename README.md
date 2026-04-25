@@ -30,8 +30,8 @@ _Быстрый старт. Мощный API. Нулевое влияние на
 
 Vida построен вокруг трёх инженерных решений, принятых _до_ написания первой строчки:
 
-- **Cold-start ≤ 3.5 с** без модов и **≤ 8 с** с сотней модов. Параллельная дискавери, кэш разобранных манифестов, `LambdaMetafactory`-генерация диспетчеров.
-- **Нулевая работа в hot-path после инициализации.** Загрузчик не вмешивается в game-tick: ни `retransform`, ни allocation-heavy event-буса, ни scan-on-hit рефлексии.
+- **Cold-start ≤ 3.5 с** без модов и **≤ 8 с** с сотней модов. Параллельная дискавери, кэш разобранных манифестов, лёгкий `emitir` шины Latidos (прямые вызовы `Oyente`, без `Method.invoke`).
+- **Нулевая работа в hot-path после инициализации.** Загрузчик не вмешивается в game-tick: ни `retransform`, ни тяжёлый event-bus, ни лишняя рефлексия на тик/HUD (платформенный мост — через закэшированные `MethodHandle`; метрики Escultor по наносекундам — только по явному флагу JVM).
 - **API, который сам уводит работу с главного потока.** `Susurro` (пул задач), `Latidos Profundos` (events с executor-hint), `Catalogo` (регистрации батчами) — всё спроектировано так, чтобы мододел _по умолчанию_ писал код, который не роняет TPS.
 
 Детальное архитектурное обоснование — в [`docs/architecture/performance.md`](./docs/architecture/performance.md).
@@ -44,34 +44,22 @@ Vida построен вокруг трёх инженерных решений,
 - **Latidos / Catalogo / Ajustes** — события, реестры, конфиги. Публичный API в `vida-base`. [→ docs/modules/base.md](./docs/modules/base.md)
 - **Резолвер зависимостей** — SemVer 2.0.0, NPM-совместимые диапазоны, SAT-бэктрекинг. [→ docs/modules/resolver.md](./docs/modules/resolver.md)
 - **Мульти-лаунчер инсталлятор** — Mojang Launcher, Prism, MultiMC, ATLauncher. GUI и CLI. [→ docs/guides/multi-launcher.md](./docs/guides/multi-launcher.md)
-- **Gradle-плагин `dev.vida.mod`** — генерация `vida.mod.json`, ремаппинг, dev-run. [→ docs/modules/gradle-plugin.md](./docs/modules/gradle-plugin.md)
+- **Gradle-плагин `dev.vida.mod`** — генерация `vida.mod.json`, ремаппинг, `vidaRun`, опционально hot-reload в dev. [→ docs/modules/gradle-plugin.md](./docs/modules/gradle-plugin.md)
+- **Data-driven моды** — datapack JSON по `vida:dataDriven` (блоки, предметы, рецепты, loot tables). [→ docs/modules/fuente.md](./docs/modules/fuente.md)
+- **Телеметрия v1 (opt-in)** — локальные агрегаты без PII; сеть только при явном будущем включении endpoint. [→ docs/security/telemetry-v1.md](./docs/security/telemetry-v1.md)
 
 ## Статус проекта
 
-Vida находится в стадии **preview** — базовая инфраструктура работает, публичный API фиксируется. Semantic Versioning соблюдается с 1.0.0; до тех пор допустимы breaking changes в API, помеченном `@ApiStatus.Preview`.
+Платформа следует **SemVer**: линия **1.0.x** закрепила базовые модули (`base`, `bloque`, `objeto`, …); линия **2.0 «Масштаб»** расширила стабильный контур на **entidad**, **mundo**, **render**, **fuente**, **vifada** (включая Vifada 2), ключевые типы **vigia**, а также добавила dev hot-reload, opt-in телеметрию и улучшения инсталлятора. Политика аннотаций — в [`docs/reference/api-stability.md`](./docs/reference/api-stability.md); миграции — [`docs/migration/1.0.0.md`](./docs/migration/1.0.0.md), [`docs/migration/2.0.0.md`](./docs/migration/2.0.0.md).
 
 | # | Компонент | Состояние |
 |---|-----------|-----------|
-| 1 | `core` — Identifier, SemVer, Result, Log, ApiStatus | ✅ stable |
-| 2 | `manifest` — `vida.mod.json` и парсер | ✅ stable |
-| 3 | `config` — Ajustes, TOML, профили | ✅ stable |
-| 4 | `cartografia` — маппинги, `.ctg`, ASM-ремаппер | ✅ stable |
-| 5 | `discovery` — сканер модов, nested-jar, кэш | ✅ stable |
-| 6 | `resolver` — резолвер зависимостей | ✅ stable |
-| 7 | `vifada` — `@VifadaMorph / @Inject / @Shadow` | ✅ preview |
-| 8 | `loader` — VidaPremain, TransformingClassLoader, BrandingEscultor | ✅ preview |
-| 9 | `base` — Latidos, Catalogo, Ajustes, VidaMod | ✅ preview |
-| 10 | `gradle-plugin` — `dev.vida.mod` | ✅ preview |
-| 11 | `installer` — GUI + CLI, Mojang / Prism / MultiMC / ATLauncher | ✅ preview |
-| 12 | `bloque` — публичный API для блоков (`Bloque`, `PropiedadesBloque`, `FormaColision`, `RegistroBloques`) | ✅ preview |
-| 13 | `objeto` — публичный API для предметов + data-components 1.21.1 | ✅ preview |
-| 14 | `susurro` — managed thread-pool, `Tarea`, `HiloPrincipal` | ✅ preview |
-| 15 | `puertas` — access-wideners, `.ptr` parser + ASM applier | ✅ preview |
-| 16 | Latidos profundos — `Ejecutor`, `@EjecutorLatido` в `base` | ✅ preview |
-| 17 | `entidad` + `mundo` — API сущностей/мира | ✅ preview (0.5.0) |
-| 18 | `render` + `red` — render/network API | ✅ preview (0.6.0) |
-| 19 | Modrinth App / CurseForge в инсталляторе | ✅ preview (0.4.0) |
-| 20 | `vigia` — встроенный профайлер | ✅ preview (0.4.0) |
+| 1 | `core`, `manifest`, `config`, `cartografia`, `discovery`, `resolver` | ✅ stable |
+| 2 | `base`, `bloque`, `objeto`, `susurro`, `puertas`, `red` (Tejido), `escultores`, Gradle plugin `dev.vida.mod` | ✅ stable (1.0+) |
+| 3 | `entidad`, `mundo`, `render`, `fuente`, `vifada` | ✅ stable (2.0+) |
+| 4 | `vigia` — `/vida profile`, JFR, HTML-отчёт | ✅ stable (основной API, 2.0+) |
+| 5 | `loader` — premain, трансформер, Fuente-снимок, dev hot-reload hooks | ⚠️ `@Preview("loader")` |
+| 6 | `installer` — GUI + CLI, Mojang / Prism / MultiMC / ATLauncher / Modrinth / CurseForge | ⚠️ `@Preview("installer")` |
 
 ## Быстрый старт
 
@@ -129,15 +117,18 @@ vida {
 ```bash
 git clone https://github.com/vidamc/Vida.git
 cd Vida
-./gradlew build
-./gradlew test
+./gradlew verifyPlatformProfiles build vidaDocTest
 ```
+
+Полный цикл, как в CI, при необходимости с чистой пересборкой: `./gradlew clean build verifyPlatformProfiles vidaDocTest javadocAll` (сводный Javadoc — `build/javadoc-all/`).
 
 Требования: **JDK 21+**, **Gradle 9.x** (через встроенный `gradlew`), **Git 2.40+**. Подробнее — [`docs/getting-started/dev-environment.md`](./docs/getting-started/dev-environment.md).
 
 ## Документация
 
-Полная документация живёт в [`docs/`](./docs/index.md). Aggregated Javadoc собирается `./gradlew javadocAll` → `build/javadoc-all/`.
+Источник истины — каталог [`docs/`](./docs/index.md): на [**главной странице документации**](docs/index.md) есть **полный каталог** всех страниц (getting started, архитектура, модули, guides, reference, миграции, безопасность). Краткие справочники собраны в [`docs/reference/index.md`](docs/reference/index.md); практические гайды — в [`docs/guides/index.md`](docs/guides/index.md).
+
+Aggregated Javadoc: `./gradlew javadocAll` → `build/javadoc-all/`. Примеры из markdown проверяются в CI: `./gradlew vidaDocTest`.
 
 - [Установка для игрока](./docs/getting-started/installation.md)
 - [Dev-окружение](./docs/getting-started/dev-environment.md)
@@ -182,11 +173,14 @@ vida/
   discovery/             обнаружение и чтение модов
   resolver/              резолвер зависимостей
   vifada/                модификация байткода
-  loader/                VidaPremain + TransformingClassLoader + BrandingEscultor
+  fuente/                data-driven JSON из datapack (dev.vida.fuente)
+  escultores/            Escultor API + BrandingEscultor
+  loader/                VidaPremain + TransformingClassLoader + BootSequence
   base/                  публичный API моддинга (Latidos, Catalogo, Ajustes)
   gradle-plugin/         плагин dev.vida.mod
   installer/             GUI + CLI установщик (Mojang/Prism/MultiMC/ATLauncher)
   docs/                  документация
+  mods/                  опциональные composite-подпроекты (только если каталоги заданы в `settings.gradle.kts`)
   .github/               CI/CD, issue/PR шаблоны
 ```
 

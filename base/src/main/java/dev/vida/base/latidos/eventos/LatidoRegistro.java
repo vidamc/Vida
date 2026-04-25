@@ -21,7 +21,7 @@ import java.util.Objects;
  * @param valor       зарегистрированное значение (generic Object, чтобы не
  *                    привязываться к параметру type реестра на уровне шины)
  */
-@ApiStatus.Preview("base")
+@ApiStatus.Stable
 public record LatidoRegistro(String reestroId, CatalogoClave<?> clave, Object valor) {
 
     public LatidoRegistro {
