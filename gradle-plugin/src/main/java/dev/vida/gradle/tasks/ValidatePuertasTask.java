@@ -16,10 +16,13 @@ import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.provider.ListProperty;
-import org.gradle.api.tasks.InputDirectory;
 import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.InputDirectory;
 import org.gradle.api.tasks.Optional;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.work.DisableCachingByDefault;
 
 /**
  * Парсит и валидирует все {@code .ptr} (puertas) файлы проекта.
@@ -30,11 +33,13 @@ import org.gradle.api.tasks.TaskAction;
  * <p>В случае ошибок парсинга задача падает с понятным сообщением,
  * в котором видно имя файла, номер строки и сам текст ошибки.
  */
+@DisableCachingByDefault(because = "Parses .ptr sources for validation only.")
 public abstract class ValidatePuertasTask extends DefaultTask {
 
     /** Корень, относительно которого разрешаются пути из манифеста. */
     @InputDirectory
     @Optional
+    @PathSensitive(PathSensitivity.RELATIVE)
     public abstract DirectoryProperty getResourcesRoot();
 
     /** Пути, указанные в {@code mod { puertas = [...] }}. */

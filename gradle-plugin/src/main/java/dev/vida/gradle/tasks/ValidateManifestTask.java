@@ -18,7 +18,10 @@ import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.Internal;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.work.DisableCachingByDefault;
 
 /**
  * Валидирует {@code vida.mod.json} через {@link ManifestParser}.
@@ -27,9 +30,11 @@ import org.gradle.api.tasks.TaskAction;
  * написанный моддером вручную), и при ошибке кидает {@link GradleException}
  * с понятным описанием.
  */
+@DisableCachingByDefault(because = "Reads manifest and optional resources for validation only.")
 public abstract class ValidateManifestTask extends DefaultTask {
 
     @InputFile
+    @PathSensitive(PathSensitivity.RELATIVE)
     public abstract RegularFileProperty getManifestFile();
 
     /**

@@ -17,6 +17,7 @@ import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.work.DisableCachingByDefault;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
@@ -28,6 +29,7 @@ import org.gradle.api.tasks.TaskAction;
  * <p>Задача регистрируется автоматически; явно вызывать её из build-скриптов
  * не требуется — {@code processResources} её {@code dependsOn}'ит.
  */
+@DisableCachingByDefault(because = "Generates vida.mod.json from DSL inputs.")
 public abstract class GenerateManifestTask extends DefaultTask {
 
     @Input public abstract Property<Integer> getSchema();

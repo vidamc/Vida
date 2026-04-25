@@ -16,10 +16,13 @@ import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
-import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputDirectory;
+import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.Optional;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
+import org.gradle.work.DisableCachingByDefault;
 
 /**
  * Запускает Minecraft с загрузчиком Vida.
@@ -37,18 +40,22 @@ import org.gradle.api.tasks.Optional;
  * {@link #getLoaderJar()} — задача не занимается скачиванием артефактов,
  * это зона ответственности моддера.
  */
+@DisableCachingByDefault(because = "Runs an external JVM process; outputs are not Gradle build outputs.")
 public abstract class RunVidaTask extends JavaExec {
 
     @InputFile
+    @PathSensitive(PathSensitivity.RELATIVE)
     public abstract RegularFileProperty getClientJar();
 
     @InputFile
+    @PathSensitive(PathSensitivity.RELATIVE)
     public abstract RegularFileProperty getLoaderJar();
 
     @Classpath
     public abstract ConfigurableFileCollection getModJars();
 
     @InputFile @Optional
+    @PathSensitive(PathSensitivity.RELATIVE)
     public abstract RegularFileProperty getModsDir();
 
     @Input
@@ -92,6 +99,7 @@ public abstract class RunVidaTask extends JavaExec {
      */
     @InputDirectory
     @Optional
+    @PathSensitive(PathSensitivity.RELATIVE)
     public abstract DirectoryProperty getHotReloadWatchDir();
 
     public RunVidaTask() {

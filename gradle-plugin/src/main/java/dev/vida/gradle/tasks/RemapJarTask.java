@@ -22,9 +22,12 @@ import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.work.DisableCachingByDefault;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 
 /**
@@ -41,18 +44,22 @@ import org.gradle.api.tasks.TaskAction;
  * = {@link #getObfNamespace obfNamespace} и target = {@link #getNamedNamespace
  * namedNamespace} по умолчанию.
  */
+@DisableCachingByDefault(because = "Remaps JAR byte content; not safe to cache across machines by default.")
 public abstract class RemapJarTask extends DefaultTask {
 
     @InputFile
+    @PathSensitive(PathSensitivity.RELATIVE)
     public abstract RegularFileProperty getInputJar();
 
     @OutputFile
     public abstract RegularFileProperty getOutputJar();
 
     @InputFile @Optional
+    @PathSensitive(PathSensitivity.RELATIVE)
     public abstract RegularFileProperty getProguardMappings();
 
     @InputFile @Optional
+    @PathSensitive(PathSensitivity.RELATIVE)
     public abstract RegularFileProperty getCtgMappings();
 
     @org.gradle.api.tasks.Input
