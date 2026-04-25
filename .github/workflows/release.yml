@@ -110,6 +110,7 @@ jobs:
           copy_jar vifada vifada
           copy_jar loader loader
           copy_jar base base
+          copy_jar cima cima
 
           # API / runtime
           copy_jar bloque bloque

@@ -31,6 +31,7 @@ dependencies {
         api(project(":vifada"))
         api(project(":loader"))
         api(project(":base"))
+        api(project(":cima"))
         api(project(":bloque"))
         api(project(":objeto"))
         api(project(":susurro"))

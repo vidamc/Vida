@@ -31,6 +31,13 @@
 
 ### Added
 
+#### `vida-cima` (`:cima`, артефакт `dev.vida:cima`, Preview `cima`)
+
+- **CimaJuego** / **CimaJuegoGlobal#cimaJuego()** — публичный слой **того же** <strong>Object = Level</strong> и <strong><code>dev.vida.mundo.Mundo</code></strong>, что <strong>MundoNivelVanilla</strong>+LatidosMundo в <strong>:loader</strong> (клиентский <strong>Minecraft#level</strong>); **без** <strong>import net.minecraft.*</strong> в <strong>API JAR</strong>.
+- Реализация <strong><code>dev.vida.platform.CimaJuegoCarga</code></strong>, привязка в <strong>BootSequence</strong> сразу после <strong>PlatformBridge</strong>; <strong>VanillaBridge#resetForTests</strong> сбрасывает глобал.
+- <strong>Рефактор</strong> клиентского <strong>MethodHandle</strong>-кэша в <strong><code>dev.vida.platform.MinecraftClientReflect</code></strong> (общий с cima/bridge).
+- <strong>docs/modules/cima.md</strong>, строка в <strong>docs/modules/index.md</strong>, <strong>release</strong> копирует <strong>vida-cima-*.jar</strong>.
+
 #### `vida-mundo`
 
 - **`LimitesVerticales`** — диапазон высот блока и фабрики `overworldVanilla121` / `netherVanilla121` / `endVanilla121` (ориентир Vanilla Java 1.21.x).

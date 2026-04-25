@@ -29,12 +29,13 @@ dependencies {
 
 **Когда нужен настоящий «прямой» доступ к ванилле (ультимативные моды):**
 
+0. **Публичный слой [cima](cima.md) (`CimaJuego` / `CimaJuegoGlobal#cimaJuego`)** — **Preview**: тот же <strong>Object = Level</strong> и <strong><code>Mundo</code></strong> по тому же пути, что <strong>MundoNivelVanilla</strong> + <strong>LatidosMundo.Tick</strong> в <strong>:loader</strong>; без <strong>import net.minecraft.*</strong> в <strong>API</strong> модуля <strong>cima</strong> (логика на <strong>классах MC</strong> — у вас в JAR, см. cima.md).
 1. **Классы `net.minecraft.*` / `com.mojang.*` на рантайме** поднимаются через **Juego** — см. [classloading.md](../architecture/classloading.md#правила-делегирования). Подключаете Minecraft (или [Cartografía](../modules/cartografia.md)-сопоставимые **stubs/реальный JAR**) в Gradle как `compileOnly` + рантайм, и пишете логику против `Level`, `ChunkMap` и т.д. *вне* `vida-mundo` (ваш пакет мода, отдельный модуль).
 2. [Vifada](../guides/vifada.md) — [инъекции](../modules/vifada.md) в нужные методы (тик мира, генерация, сеть), где Latidos **не** даёт события.
 3. [Puertas](../guides/puertas.md) — расширение доступа к `private`/`protected` без копий рефлекса, если Vifada избыточна.
-4. Внутренний [PlatformBridge / `VanillaBridge`](./loader.md#платформенные-морфы) в `:loader` — **не** публичный контракт для модов; с него в шину идут в том числе `LatidoPulso` и [`LatidosMundo.Tick`](../../mundo/src/main/java/dev/vida/mundo/latidos/LatidosMundo.java) в привязке к vanilla-тику. Свои сценарии **ультимативного** вмешательства строите на [Vifada](../guides/vifada.md) (и при необходимости Puertas + JAR/стабы), а не на `PlatformBridge`.
+4. [PlatformBridge / `VanillaBridge`](./loader.md#платформенные-морфы) — **внутренняя** диспатч-точка для <strong>LatidoPulso</strong> / <strong>LatidosMundo.Tick</strong>; <strong>не</strong> подмешивайте свои куски в bridge. Для своей логики: **cima (0)**, при необходимости **(2–3)**, JAR/стабы <strong>(1)</strong>.
 
-Коротко: **абстрактный мир = `vida-mundo`**. **Игра = classpath + Vifada/Puertas** по необходимости. Оба пути **совместимы**: [LatidosMundo](../../mundo/src/main/java/dev/vida/mundo/latidos/LatidosMundo.java) с полезной `Mundo` — для портABLE-логики; низкоуровневый `Level` — в **вашем** коде на classpath игры.
+Коротко: **абстрактный мир = `vida-mundo`**. **Снимок+сырой Level на том же пути, что и bridge = [cima](cima.md)**. **Свой** глубинный и Game = classpath + cima (по вкусу) + Vifada/Puertas.
 
 ## Контракт стабильности
 

@@ -36,6 +36,8 @@ import dev.vida.loader.VidaClassTransformer;
 import dev.vida.loader.VidaEnvironment;
 import dev.vida.loader.profile.PlatformProfileDescriptor;
 import dev.vida.loader.profile.PlatformProfileLoader;
+import dev.vida.cima.CimaJuegoGlobal;
+import dev.vida.platform.CimaJuegoCarga;
 import dev.vida.platform.PlatformBridgeSupport;
 import dev.vida.vifada.MorphMethodResolution;
 import dev.vida.escultores.Escultor;
@@ -215,6 +217,7 @@ public final class BootSequence {
         // на мок). Bridge активен даже при пустом списке модов — это даёт
         // «чистому» Vida рабочую шину тиков/HUD без единого мода.
         PlatformBridgeSupport.installFromProfile(platformProfile);
+        CimaJuegoGlobal.instalar(new CimaJuegoCarga());
 
         // ---- 7. Invoke mod entrypoints ---------------------------------
         invokeEntrypoints(resolvedMods, modLoaders, latidos, catalogos, options, errors);

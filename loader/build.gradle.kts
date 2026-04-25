@@ -29,6 +29,7 @@ dependencies {
     api(project(":fuente"))
     api(project(":mundo"))
     api(project(":base"))
+    implementation(project(":cima"))
     api(project(":render"))
     api(project(":cartografia"))
 

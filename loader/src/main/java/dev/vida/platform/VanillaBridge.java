@@ -7,6 +7,7 @@ package dev.vida.platform;
 import dev.vida.base.LatidoGlobal;
 import dev.vida.base.latidos.LatidoBus;
 import dev.vida.base.latidos.eventos.LatidoPulso;
+import dev.vida.cima.CimaJuegoGlobal;
 import dev.vida.core.ApiStatus;
 import dev.vida.loader.internal.ClientEntrypointScheduler;
 import dev.vida.core.Log;
@@ -14,8 +15,6 @@ import dev.vida.mundo.latidos.LatidosMundo;
 import dev.vida.render.LatidoRenderHud;
 import dev.vida.render.PintorHud;
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.reflect.Method;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -68,7 +67,8 @@ public final class VanillaBridge implements PlatformBridge {
     @ApiStatus.Internal
     public static synchronized void resetForTests() {
         INSTANCE = null;
-        McClientReflect.resetForTests();
+        MinecraftClientReflect.resetForTests();
+        CimaJuegoGlobal.restaurarNuloSoloProbar();
         PlatformBridge.resetGfxFillCacheForTests();
         ClientEntrypointScheduler.resetForNewBootSession();
         MundoNivelVanilla.resetForTests();
@@ -104,19 +104,16 @@ public final class VanillaBridge implements PlatformBridge {
     }
 
     private static void emitirLatidoMundoSiNivel(LatidoBus bus, long tick) {
-        McClientReflect r = McClientReflect.instance();
+        var nivelOpt = MinecraftClientReflect.nivelHabitualOEmpty();
+        if (nivelOpt.isEmpty()) {
+            return;
+        }
+        Object level = nivelOpt.get();
+        MinecraftClientReflect r = MinecraftClientReflect.instance();
         if (r == null) {
             return;
         }
         try {
-            Object mc = r.minecraftGetInstance.invoke();
-            if (mc == null) {
-                return;
-            }
-            Object level = r.minecraftLevel.invoke(mc);
-            if (level == null) {
-                return;
-            }
             Object dayTimeObj = r.levelGetDayTime.invoke(level);
             long dayTime = dayTimeObj instanceof Number n ? n.longValue() : 0L;
             long ciclo = Math.floorMod(dayTime, 24000L);
@@ -160,7 +157,7 @@ public final class VanillaBridge implements PlatformBridge {
     public long tickCount() { return tickCounter.get(); }
 
     private int guiScaledWidth() {
-        McClientReflect r = McClientReflect.instance();
+        MinecraftClientReflect r = MinecraftClientReflect.instance();
         if (r == null) {
             return -1;
         }
@@ -176,7 +173,7 @@ public final class VanillaBridge implements PlatformBridge {
     }
 
     private int guiScaledHeight() {
-        McClientReflect r = McClientReflect.instance();
+        MinecraftClientReflect r = MinecraftClientReflect.instance();
         if (r == null) {
             return -1;
         }
@@ -188,87 +185,6 @@ public final class VanillaBridge implements PlatformBridge {
             return (int) r.windowGuiScaledHeight.invoke(window);
         } catch (Throwable ex) {
             return -1;
-        }
-    }
-
-    // ----------------------------------------------------------------- reflection cache
-
-    private static final class McClientReflect {
-        final MethodHandle minecraftGetInstance;
-        final MethodHandle minecraftLevel;
-        final MethodHandle minecraftGetWindow;
-        final MethodHandle windowGuiScaledWidth;
-        final MethodHandle windowGuiScaledHeight;
-        final MethodHandle levelGetDayTime;
-
-        private static volatile McClientReflect INSTANCE;
-        private static volatile boolean initFailed;
-
-        private McClientReflect(
-                MethodHandle minecraftGetInstance,
-                MethodHandle minecraftLevel,
-                MethodHandle minecraftGetWindow,
-                MethodHandle windowGuiScaledWidth,
-                MethodHandle windowGuiScaledHeight,
-                MethodHandle levelGetDayTime) {
-            this.minecraftGetInstance = minecraftGetInstance;
-            this.minecraftLevel = minecraftLevel;
-            this.minecraftGetWindow = minecraftGetWindow;
-            this.windowGuiScaledWidth = windowGuiScaledWidth;
-            this.windowGuiScaledHeight = windowGuiScaledHeight;
-            this.levelGetDayTime = levelGetDayTime;
-        }
-
-        static McClientReflect instance() {
-            McClientReflect local = INSTANCE;
-            if (local != null) {
-                return local;
-            }
-            if (initFailed) {
-                return null;
-            }
-            synchronized (McClientReflect.class) {
-                if (INSTANCE != null) {
-                    return INSTANCE;
-                }
-                if (initFailed) {
-                    return null;
-                }
-                try {
-                    INSTANCE = crear();
-                    return INSTANCE;
-                } catch (ReflectiveOperationException e) {
-                    initFailed = true;
-                    return null;
-                }
-            }
-        }
-
-        private static McClientReflect crear() throws ReflectiveOperationException, IllegalAccessException {
-            MethodHandles.Lookup pub = MethodHandles.publicLookup();
-            Class<?> mcCl = Class.forName("net.minecraft.client.Minecraft");
-            Class<?> winCl = Class.forName("com.mojang.blaze3d.platform.Window");
-            Class<?> lvlCl = Class.forName("net.minecraft.world.level.Level");
-            Method gi = mcCl.getMethod("getInstance");
-            Method lvl = mcCl.getMethod("level");
-            Method gw = mcCl.getMethod("getWindow");
-            Method wW = winCl.getMethod("getGuiScaledWidth");
-            Method wH = winCl.getMethod("getGuiScaledHeight");
-            Method gdt = lvlCl.getMethod("getDayTime");
-            return new McClientReflect(
-                    pub.unreflect(gi),
-                    pub.unreflect(lvl),
-                    pub.unreflect(gw),
-                    pub.unreflect(wW),
-                    pub.unreflect(wH),
-                    pub.unreflect(gdt));
-        }
-
-        static void resetForTests() {
-            synchronized (McClientReflect.class) {
-                INSTANCE = null;
-                initFailed = false;
-            }
         }
     }
 

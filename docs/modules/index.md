@@ -29,6 +29,7 @@
 | Модуль | Стабильность | Одно предложение |
 |--------|--------------|------------------|
 | [`base`](./base.md) | `@Stable` (1.0+) | `VidaMod`, `ModContext`, Latidos (+ `Ejecutor`), Catalogo, Ajustes. |
+| [`cima`](./cima.md) | `@Preview("cima")` | «Верх» доступа: тот же `Mundo`+`Object Level`, что в bridge; для кастомных глубинных модов. |
 | [`bloque`](./bloque.md) | `@Stable` (1.0+) | Блоки: `Bloque`, `PropiedadesBloque`, `FormaColision`, `RegistroBloques`. |
 | [`objeto`](./objeto.md) | `@Stable` (1.0+) | Предметы: `Objeto`, data-components, `Material`, `Herramienta`, `ObjetoDeBloque`. |
 | [`entidad`](./entidad.md) | `@Stable` (2.0+) | Сущности: `Entidad`, `TipoEntidad`, `PropiedadesEntidad`, entity data-components. |
@@ -64,6 +65,9 @@ manifest + resolver + vifada → loader → base
 loader ← escultores
 loader ← fuente
 loader ← mundo
+base ← cima
+cima → base + mundo
+loader ← cima
 base ← bloque
 base + bloque ← objeto
 base ← entidad
