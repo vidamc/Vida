@@ -2,6 +2,8 @@
 
 Короткий, живой документ. Детали — в GitHub Projects / Milestones.
 
+**План вынесенного вперёд развития публичного API для мододелов (оси, фазы A–E, критерии DoD):** [roadmap/ultimate-api-plan.md](roadmap/ultimate-api-plan.md).
+
 ## Done (0.1.x — 1.0.0)
 
 - **1.0.0 (Session 9).** Стабилизация `@ApiStatus.Stable` для `base`, `bloque`, `objeto`, `susurro`, `puertas`, Gradle plugin; `vidaDocTest` для проверки примеров в `docs/` (`package dev.vida.*`); JDK CI matrix 21–25; CycloneDX SBOM в релизе (Syft); `docs/migration/1.0.0.md`, `docs/security/audit-1.0.md`.

@@ -1,0 +1,212 @@
+# План доработки публичного API Vida до ультимативного уровня
+
+Документ задаёт **целевой образ** API для мододелов, **оси работ**, **поэтапный** план и **критерии готовности**, согласованные с лексикой Vida (Latidos, Mundo, Catalogo, Cima, Tejido, Susurro, Ajustes, Cartografía, Vifada, Puertas, Vigia и т.д.). Детали выпусков по мажорам — в [../roadmap.md](../roadmap.md) и [../reference/api-stability.md](../reference/api-stability.md).
+
+---
+
+## 1. Что значит «ультимативный API» (целевой образ)
+
+| Критерий | Описание |
+| -------- | -------- |
+| **Полнота сценариев** | Автор решает типовые задачи (контент, тик, мир, сеть, конфиг, дырки в vanilla) **через** пакеты Vida, не собирая логику из соглашений «как в bridge», кроме осознанного **escape** через Cima. |
+| **Симметрия сред** | Один и тот же *уровень обещаний* для **клиента** и **сервера** (где применимо): не «всё на клиенте, dedicated — по сорцам». |
+| **Потоки** | Понятный контракт: *где* можно трогать мир, *когда* — Susurro, *как* — возврат на Hilo principal / Latidos. |
+| **Стабильность** | Минорные релизы **не ломают** `@Stable`; превью помечены `@Preview`; путь **Preview → Stable** прозрачен. |
+| **Инструменты** | Минимальный **mod template** + Gradle-задачи: запуск, ремап, валидация, при желании — контроль API. |
+| **Обучаемость** | Один **сквозной путь** от `vida.mod.json` до релиза + **рецепты** для горячих тем. |
+| **Диагностика** | Сообщения резолвера, загрузчика и Vifada — **действенные** (что не так, что сделать). |
+| **Проверяемость** | API покрыт контрактно; мод — может тестировать **без** «полумагии». |
+
+*«Ультимативно» = не клон чужой экосистемы, а **собственный** ZK для Vida, опираясь на маппинги, Cartografía и слой загрузчика ([../architecture/classloading.md](../architecture/classloading.md)).*
+
+---
+
+## 2. Базовая линия (что уже есть)
+
+- **Мод-ядро:** `VidaMod`, `ModContext`, [Latidos](../guides/latidos.md), [Catalogo](../guides/catalogo.md), [Ajustes](../guides/ajustes.md) — [base](../modules/base.md), BOM [vida-bom](../reference/platform-bom.md).
+- **Модульные API:** [bloque](../modules/bloque.md), [objeto](../modules/objeto.md), [entidad](../modules/entidad.md), [mundo](../modules/mundo.md), [render](../modules/render.md), [red](../modules/red.md) (Tejido), [susurro](../modules/susurro.md), [puertas](../modules/puertas.md) и др. — см. [modules/index.md](../modules/index.md).
+- **Cima** — [Preview](../modules/cima.md), клиент-ориентированный доступ к тому же `Mundo` + `Object` уровня, что bridge.
+- **Инструменты:** [gradle-plugin](../modules/gradle-plugin.md), [modder-toolkit](../guides/modder-toolkit.md), [modding-paths](../guides/modding-paths.md).
+- **CI:** `verifyPlatformProfiles build vidaDocTest`, релизные JAR-и стейдятся в [release workflow](../../.github/workflows/release.yml) (в т.ч. `cima`).
+
+---
+
+## 3. Оси доработки (что наращивать)
+
+### 3.1 Cima и низкоуровневый мост
+
+| Задача | Почему важно |
+| ------ | ------------ |
+| **Сервер / dedicated** | Реализация(и) и **явный** API для `ServerLevel` и/или main-мира сервера — тот же `Mundo`, что из bridge, **без** копии логики в модах. |
+| **Семантика** | `vinculado()`, `nivelMinecraftVivo()`, `mundoSobreNivelCargado()` — закрепить Javadoc, границы (null, выгрузка, смена измерения). |
+| **@Preview → Stable (части)** | Определить, какие **узкие** сигнатуры можно стабилизировать, а что **навсегда** волатильно (Mojang-уровень). |
+| **Именование** | Единообразие: один контур «Cima*» под клиент/сервер без дублирования `net.minecraft` в JAR-е API. |
+
+### 3.2 Mundo и остальные публичные модули
+
+| Задача | Почему важно |
+| ------ | ------------ |
+| **Прокладки между cima и mundo** | Сценарии: «нужен `Mundo` + иногда `Level`» — образцы в [guides](../guides/index.md), не только в cima. |
+| **Согласованность** | Один смысл координат, чанка, тика между `mundo` и LatidosMundo ([mundo.md](../modules/mundo.md)) — ссылки из других модулей. |
+| **Границы ответственности** | Когда [bloque](../modules/bloque.md)/[entidad](../modules/entidad.md) вместо прямого Cima — вынести в [modding-paths](../guides/modding-paths.md) как правила. |
+
+### 3.3 Latidos, Ejecutor, Susurro, Hilo principal
+
+| Задача | Почему важно |
+| ------ | ------------ |
+| **Матрица «событие / поток / мутирование мира»** | Отдельная справка (раздел [latidos.md](../guides/latidos.md) или новая страница `latidos-hilo.md` при необходимости). |
+| **Default для регистрации** | @EjecutorLatido / [LatidoRegistrador](../modules/base-ejecutor.md) — явные best practices, антипаттерны. |
+| **Back-pressure** | Сценарии Tejido + тяжёлая логика в [susurro.md](../modules/susurro.md) — согласовать с [red.md](../modules/red.md). |
+
+### 3.4 Catalogo, Ajustes, Fuente, манифест
+
+| Задача | Почему важно |
+| ------ | ------------ |
+| **Один путь: data + код** | Связка [fuente](../modules/fuente.md) — Catalogo — Ajustes перезагрузка ([hot-reload](../guides/hot-reload.md) где уместно). |
+| **Схема и ошибки** | Некорректные ключи Ajustes, конфликты `custom` в [manifest](../reference/manifest-schema.md) — **сообщения** с id и путём исправления. |
+
+### 3.5 Tejido (сеть)
+
+| Задача | Почему важно |
+| ------ | ------------ |
+| **Шаблоны** | S2C / C2S, версионирование, обратная совместимость — рецепты в [red.md](../modules/red.md) + краткие how-to. |
+| **Согласованность с потоком** | Где пакет приходит (главный цикл / off-thread) — зафиксировать в API и доке. |
+
+### 3.6 Vifada, Puertas, Escultores
+
+| Задача | Почему важно |
+| ------ | ------------ |
+| **Карта «когда что»** | [modding-paths](../guides/modding-paths.md) обновлять с реальными trade-off, не дублировать. |
+| **Конфликты Vifada** | Диагностика (приоритеты) — путь 2.0+ из [../roadmap.md](../roadmap.md), держать в плане API-UX. |
+
+### 3.7 Стабильность, SemVer, BOM
+
+| Задача | Почему важно |
+| ------ | ------------ |
+| **Каталог @Stable / @Preview** | [api-stability.md](../reference/api-stability.md) = единая таблица по **пакету** и **модулю**. |
+| **BOM** | Каждый **новый** `dev.vida:*` JAR, который мод подключает, — в [bom](../modules/bom.md) + релизный [release.yml](../../.github/workflows/release.yml). |
+| **Миграции** | [migration/](../migration/) + заметка в [CHANGELOG](../CHANGELOG.md) на каждое **намеренное** изменение публичного API. |
+
+### 3.8 vida-gradle-plugin и DX
+
+| Задача | Почему важно |
+| ------ | ------------ |
+| **Starter** | [templates/starter-mod](../index.md#шаблоны) или отдельный шаблон — 1:1 с докой «первый мод». |
+| **Проверки** | `vidaValidateManifest`, [Puertas tasks](../modules/gradle-plugin.md) — fail-fast, понятные отчёты. |
+| **(Опционально)** | Задача «снимок публичных пакетов `dev.vida`» в CI мода. |
+
+### 3.9 Документация и сценарии
+
+| Задача | Почему важно |
+| ------ | ------------ |
+| **Один end-to-end трек** | `installation` → `dev-environment` → `first-mod` → [modder-toolkit](../guides/modder-toolkit.md) — без дыр. |
+| **Книга рецептов** | Раздел или серия: тик, блок, сущность, пакет, конфиг, Cima+vanilla, ошибки резолвера. |
+| **Glossary** | [glossary.md](../glossary.md) синхронизирован с **новыми** терминами (например Cima). |
+
+### 3.10 Тесты и контракты
+
+| Задача | Почему важно |
+| ------ | ------------ |
+| **Заглушки** | `CimaJuegoNulo` и сценарии [base](../modules/base.md) в unit-тестах **модов** — документированные. |
+| **vidaDocTest** | Каждая **новая** code-подборка в `docs/` с `dev.vida` — валидна в CI. |
+| **Профили** | [platform-profiles](../modules/platform-profiles.md) расширять вместе с Cima/bridge, без расхождений. |
+
+### 3.11 Наблюдаемость (Vigia) и логи
+
+| Задача | Почему важно |
+| ------ | ------------ |
+| **Mod-scoped** | Соглашения по `Log` / префиксу (если вводят) для поддержки. |
+| **Vigia** | Рецепт «как поймать hot-path в моде» [vigia.md](../modules/vigia.md). |
+
+### 3.12 Резолвер, совместимости, политика доступа
+
+| Задача | Почему важно |
+| ------ | ------------ |
+| **Ошибка = действие** | [resolver](../modules/resolver.md): циклы, `incompatibilities`, [policies](../guides/resolver-policies.md) — тексты + коды, где уместно. |
+| **Матрица «что пишу в manifiesto»** | [manifest](../reference/manifest-schema.md) + ссылка из [first-mod](../getting-started/first-mod.md). |
+
+---
+
+## 4. Поэтапный план (фазы)
+
+### Фаза A — «Доверие к контракту» (параллельно 1.x)
+
+- Зафиксировать **матрицу** `@Stable` / `@Preview` / `@Internal` по модулям; обновить [api-stability.md](../reference/api-stability.md).
+- Ужесточить **сообщения** резолвера и критичных путей загрузки (текст + путь в манифест / mods path).
+- **BOM + release:** любой **новый** публичный JAR `dev.vida` — в BOM и в [release stage](../../.github/workflows/release.yml).
+- Минимальный **E2E трек** в docs проверен: линк-чек + `vidaDocTest`.
+
+**Выход:** мододел понимает, что *стабильно* и *чем рискует* при Preview; CI не пускает слом док-примеров.
+
+### Фаза B — «Cima + мир: симметрия и ясность»
+
+- **Реализация** Cima (или соседний контракт) для **серверного** / dedicated сценария, согласованная с bridge.
+- **Javadoc + docs:** `cima.md` + перекрёстные ссылки в `mundo.md` и [first-entity](../guides/first-entity.md) при необходимости.
+- **Unit-тесты** edge cases (отсутствие уровня, смена мира) на уровне доступно без полного MC где возможно.
+
+**Выход:** сценарий «нужен Level/Mundo и на dedicated» **не** требует внутренних пакетов `loader` в моде.
+
+### Фаза C — «Потоки и сеть: полная картина»
+
+- Справка по **потокам** (Latidos / Susurro / главный Hilo) + 2–3 **анти**-паттерна.
+- [red](../modules/red.md): рецепты S2C/C2S, версия протокола, взаимодействие с Hilo.
+- Согласовать [susurro + Tejido](../modules/susurro.md) в сценариях high load.
+
+**Выход:** снижение **Undefined Behavior** в модах из-за потока.
+
+### Фаза D — «Инструменты + эталон»
+
+- **Starter-mod** (или [templates/](../index.md#шаблоны)) обновлён под BOM, Cima, минимальные `compileOnly`.
+- (Опционально) **официальный пример-мод** (репо или `examples/`) в CI: сборка + smoke.
+- Расширение **vida-gradle-plugin**: приоритеты из реальных болей (валидация, run, remapping).
+
+**Выход:** время **до первого** запуска падает; эталон — **источник правды**.
+
+### Фаза E — «Полировка 2.0+»
+
+- Темы из [../roadmap.md](../roadmap.md) (Vifada 2, data-driven, hot-reload) — **как** они усиливают API-историю, а не дублируют её.
+- Cima: частичный **переход** с Preview к Stable **там**, где нет волатильности Mojang-типов, или **чёткое** разделение *стабильной обвязки* и *дырки*.
+
+**Выход:** Vida **конкурирует** по **DX + предсказуемости** с сильными SDK, на **собственных** правилах.
+
+---
+
+## 5. Критерии готовности («ультимативно» = выполнено)
+
+- [ ] **Cima** покрывает **клиент + server/dedicated** по согласованному с bridge контракту, документировано.
+- [ ] **Матрица потоков** опубликована и **не противоречит** Javadoc `Ejecutor` / `Susurro` / `Tejido`.
+- [ ] **100%** публикуемых `dev.vida:*` присутствуют в **BOM** и в **релизном** стейдже; исключения перечислены и **обоснованы**.
+- [ ] **Сквозной** гайд 0 → релиз без битых ссылок; `vidaDocTest` зелёный.
+- [ ] **Резолвер/лоадер** в типичных ошибках выдают **корректное** следующее действие.
+- [ ] Есть **минимум один** поддерживаемый **эталонный** мод/шаблон под актуальную линейку.
+- [ ] [api-stability.md](../reference/api-stability.md) = **снимок** правды; мажор = миграция + CHANGELOG.
+
+---
+
+## 6. Не-цели (чтобы не размывать план)
+
+- **Не** публиковать `net.minecraft` в JAR-ах Vida-API; обход — Cartografía, клиент, Cima-escape, как сейчас.
+- **Не** дублировать **весь** движок **vanilla** в `vida-mundo` — вместо этого Cima + точечные расширения модулей.
+- **Не** копировать чужие имена/термины в **публичных** API и `vida.mod.json` ([glossary](../glossary.md) — критерий).
+- **Не** выполнять тяжёлые задачи **лоадера** в игровом **тике** ([performance](../architecture/performance.md) — нарушение архитектуры Vida.
+
+---
+
+## 7. Связь с мажорными релизами
+
+- **1.0** — план не заменяет [критерии 1.0 в roadmap](../roadmap.md#10); часть критериев «ультимативно» (Preview→Stable по многим модулям) сознательно к **1.0** или **2.0** по [roadmap](../roadmap.md).
+- **2.0 «Масштаб»** — **усиливает** оси 3.6, 3.4, 3.8, 3.11, но **не отменяет** Фазы A–E: они **сквозные**.
+
+---
+
+## 8. Ссылки (быстрый вход)
+
+| Документ | Содержание |
+| -------- | ---------- |
+| [modules/index.md](../modules/index.md) | Каталог модулей. |
+| [platform-bom.md](../reference/platform-bom.md) | Подключение BOM. |
+| [modder-toolkit.md](../guides/modder-toolkit.md) | Gradle, задачи. |
+| [cima.md](../modules/cima.md) | Cima (текущее). |
+| [troubleshooting.md](../troubleshooting.md) | Частые ошибки. |
+
+Обновлять **этот план** при смене фаз (отметки в [CHANGELOG.md](../../CHANGELOG.md) в секции *Documentation* / *Roadmap* — по соглашению команды).
