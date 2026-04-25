@@ -1,18 +1,40 @@
 # mundo
 
-Публичный **world API** без ссылок на классы Minecraft: снимок `Mundo`, координаты блока/чанка/региона, измерение, биом, **идентификатор блока в клетке и теги блоков** (`EtiquetaBloque` из `vida-bloque`), world-латидосы. Vanilla-runtime не в compile classpath; клиентская выборка — через `:loader` (`MundoClienteVanilla`).
+Публичный **world API** без ссылок на классы Minecraft: снимок `Mundo`, координаты блока/чанка/региона, измерение, биом, **идентификатор блока в клетке и теги блоков** (`EtiquetaBloque` из `vida-bloque`), world-латидосы. JAR ваниллы **не** в compile classpath этого модуля.
+
+Рантайм, который **строит** `Mundo` из существующего vanilla-`Level` и **прикручивает** [`LatidosMundo.Tick`](../../mundo/src/main/java/dev/vida/mundo/latidos/LatidosMundo.java) к шине, — в пакете `dev.vida.platform` модуля `:loader` (например [`MundoNivelVanilla`](../../loader/src/main/java/dev/vida/platform/MundoNivelVanilla.java), вместе с [PlatformBridge / `VanillaBridge`](./loader.md#платформенные-морфы)). Это **внутренняя проводка** между игрой и шиной Latidos, а не публичное расширяемое «супер-API мира» — см. [ниже](#абстракция-и-прямой-доступ-к-minecraft).
 
 - Пакет: `dev.vida.mundo`
-- Gradle: `dev.vida:vida-mundo`
+- Артефакт: `dev.vida:mundo` (версия через [BOM `dev.vida:vida-bom`](../reference/platform-bom.md), та же, что и у `dev.vida:base` и остальных модулей)
 - Стабильность: **`@ApiStatus.Stable`** с 2.0 «Масштаб» (SemVer для публичных типов; см. [api-stability.md](../reference/api-stability.md))
 
 ```kotlin
 dependencies {
-    compileOnly("dev.vida:vida-mundo:2.0.0")
+    compileOnly(platform("dev.vida:vida-bom:…"))  // ваша `vida.platform.version`
+    compileOnly("dev.vida:mundo")
 }
 ```
 
 `compileOnly` — на рантайме API находится в загрузчике / общем classpath с другими модами.
+
+## Абстракция и прямой доступ к Minecraft
+
+**Что `vida-mundo` *не* даёт (и намеренно):**
+
+- нет пути к `ServerLevel`, `LevelChunkManager`, `ChunkMap`, `NoiseSettings`, `DensityFunction`, генераторам сидов и прочему **движку мира** — только абстракции (`Coordenada`, `ChunkCoordenada` как целочисленные индексы, снимок [`Bioma`](../../mundo/src/main/java/dev/vida/mundo/Bioma.java), [LatidosMundo](../../mundo/src/main/java/dev/vida/mundo/latidos/LatidosMundo.java) на шине);
+- [`Mundo`](../../mundo/src/main/java/dev/vida/mundo/Mundo.java) — это **контракт снимка** (день/ночь, биом, «чанк известен», `bloqueRegistradoEn` и т.д.), а не копия surface/chunk-данных 1:1;
+- **не** подразумевается, что сюда добавят «витрину» весь noise/chunk-pipeline: это сразу привязало бы публичный API к внутренностям Mojang.
+
+Так сделано, чтобы моды, завязанные **только** на `vida-mundo` / `vida-bloque` / [Latidos](../guides/latidos.md) / [Catalogo](../guides/catalogo.md), жили в одном SemVer, а порт к новой мажорной линии Minecraft — оставался в Vifada-морфах и внешних артефактах, а не в каждом вызове `Mundo`.
+
+**Когда нужен настоящий «прямой» доступ к ванилле (ультимативные моды):**
+
+1. **Классы `net.minecraft.*` / `com.mojang.*` на рантайме** поднимаются через **Juego** — см. [classloading.md](../architecture/classloading.md#правила-делегирования). Подключаете Minecraft (или [Cartografía](../modules/cartografia.md)-сопоставимые **stubs/реальный JAR**) в Gradle как `compileOnly` + рантайм, и пишете логику против `Level`, `ChunkMap` и т.д. *вне* `vida-mundo` (ваш пакет мода, отдельный модуль).
+2. [Vifada](../guides/vifada.md) — [инъекции](../modules/vifada.md) в нужные методы (тик мира, генерация, сеть), где Latidos **не** даёт события.
+3. [Puertas](../guides/puertas.md) — расширение доступа к `private`/`protected` без копий рефлекса, если Vifada избыточна.
+4. Внутренний [PlatformBridge / `VanillaBridge`](./loader.md#платформенные-морфы) в `:loader` — **не** публичный контракт для модов; с него в шину идут в том числе `LatidoPulso` и [`LatidosMundo.Tick`](../../mundo/src/main/java/dev/vida/mundo/latidos/LatidosMundo.java) в привязке к vanilla-тику. Свои сценарии **ультимативного** вмешательства строите на [Vifada](../guides/vifada.md) (и при необходимости Puertas + JAR/стабы), а не на `PlatformBridge`.
+
+Коротко: **абстрактный мир = `vida-mundo`**. **Игра = classpath + Vifada/Puertas** по необходимости. Оба пути **совместимы**: [LatidosMundo](../../mundo/src/main/java/dev/vida/mundo/latidos/LatidosMundo.java) с полезной `Mundo` — для портABLE-логики; низкоуровневый `Level` — в **вашем** коде на classpath игры.
 
 ## Контракт стабильности
 
@@ -173,6 +195,8 @@ public final class MundoApiStableSnapshot {
 
 ## Что читать дальше
 
+- [Абстракция и прямой доступ к Minecraft](#абстракция-и-прямой-доступ-к-minecraft) — в этом же файле: зачем нет движка в `vida-mundo` и куда идти за ваниллой.
 - [`entidad`](./entidad.md) — сущности и связь с миром.
 - [`guides/first-entity.md`](../guides/first-entity.md) — пошаговый пример с `LatidosMundo`.
 - [`base-ejecutor`](./base-ejecutor.md) — регистрация обработчиков.
+- [`loader`](./loader.md#платформенные-морфы) — `PlatformBridge`, эмиссия `LatidoPulso` / `LatidosMundo.Tick` из тика.
