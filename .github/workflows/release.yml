@@ -174,7 +174,7 @@ jobs:
           cat SHA256SUMS
 
       - name: Install Syft (SBOM)
-        uses: anchore/sbom-action/download-syft@v0.18.0
+        uses: anchore/sbom-action/download-syft@v0.24.0
 
       - name: CycloneDX SBOM from staged JARs
         shell: bash
