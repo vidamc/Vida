@@ -9,36 +9,36 @@
 java = "21"
 
 # Skal Launcher (Kotlin + Compose Desktop)
-kotlin       = "2.0.21"
-compose-mp   = "1.7.3"
-coroutines   = "1.9.0"
-serialization-json = "1.7.3"
+kotlin       = "2.3.21"
+compose-mp   = "1.10.3"
+coroutines   = "1.10.2"
+serialization-json = "1.11.0"
 
 # Тесты
 junit        = "5.11.4"
-assertj      = "3.27.3"
+assertj      = "3.27.7"
 
 # Bytecode
-asm          = "9.7.1"
+asm          = "9.9.1"
 
 # Логирование
-slf4j        = "2.0.16"
-logback      = "1.5.12"
+slf4j        = "2.0.17"
+logback      = "1.5.32"
 
 # Конфиги
 tomlj        = "1.1.1"
 
 # Database (installer — Modrinth handler)
-sqlite-jdbc  = "3.47.1.0"
+sqlite-jdbc  = "3.53.0.0"
 
 # Property-based testing (моды / рендер)
-jqwik        = "1.9.2"
+jqwik        = "1.9.3"
 
 # Benchmarks (JMH)
 jmh          = "1.37"
 
 # LWJGL (headless GL / клиентские тесты)
-lwjgl        = "3.3.4"
+lwjgl        = "3.4.1"
 
 # Gradle plugins
 spotless     = "7.0.2"
