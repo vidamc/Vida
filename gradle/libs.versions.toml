@@ -11,7 +11,7 @@ java = "21"
 # Skal Launcher (Kotlin + Compose Desktop)
 kotlin       = "2.3.21"
 compose-mp   = "1.10.3"
-coroutines   = "1.10.2"
+coroutines   = "1.11.0"
 serialization-json = "1.11.0"
 
 # Тесты
@@ -29,7 +29,7 @@ logback      = "1.5.32"
 tomlj        = "1.1.1"
 
 # Database (installer — Modrinth handler)
-sqlite-jdbc  = "3.53.0.0"
+sqlite-jdbc  = "3.53.1.0"
 
 # Property-based testing (моды / рендер)
 jqwik        = "1.9.3"
