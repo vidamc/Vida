@@ -10,7 +10,7 @@ java = "21"
 
 # Skal Launcher (Kotlin + Compose Desktop)
 kotlin       = "2.3.21"
-compose-mp   = "1.10.3"
+compose-mp   = "1.11.0"
 coroutines   = "1.11.0"
 serialization-json = "1.11.0"
 
@@ -19,10 +19,10 @@ junit        = "5.11.4"
 assertj      = "3.27.7"
 
 # Bytecode
-asm          = "9.9.1"
+asm          = "9.10"
 
 # Логирование
-slf4j        = "2.0.17"
+slf4j        = "2.0.18"
 logback      = "1.5.32"
 
 # Конфиги
