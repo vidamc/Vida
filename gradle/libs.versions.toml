@@ -15,7 +15,7 @@ coroutines   = "1.11.0"
 serialization-json = "1.11.0"
 
 # Тесты
-junit        = "5.11.4"
+junit        = "6.1.0"
 assertj      = "3.27.7"
 
 # Bytecode
