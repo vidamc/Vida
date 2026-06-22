@@ -16,6 +16,42 @@
 
 ---
 
+## [0.9.2](https://github.com/vidamc/Vida/compare/v0.9.1...v0.9.2) (2026-04-25)
+
+
+### Features
+
+* **valenta:** Valenta block in video settings; refresh docs ([4332e09](https://github.com/vidamc/Vida/commit/4332e093474cd98b2785c534553246ec12d6e5fc))
+* Vida 0.9.0 — платформа модов + рендер-мод Valenta ([428c8fb](https://github.com/vidamc/Vida/commit/428c8fbf5c1228926cd2c37e7569c92570c56202))
+* ремаппинг обфусцированных имён для Vifada-морфов ([9eaf41b](https://github.com/vidamc/Vida/commit/9eaf41ba4d063b141d70cccc83bbe0dadeef4f52))
+
+
+### Bug Fixes
+
+* **ci:** убраны нереализованные native installers из release.yml ([e023dea](https://github.com/vidamc/Vida/commit/e023dea2acf0b8a96e722be098734f3a49db42f2))
+* **gradle-plugin:** аннотации для validatePlugins (Plugin Portal) ([d8433ba](https://github.com/vidamc/Vida/commit/d8433ba3bba21b72a25dc43a05a4ae43edc6b141))
+* Metadata Plugin Portal (website/vcsUrl) и --no-configuration-cache для publishPlugins ([09323fe](https://github.com/vidamc/Vida/commit/09323fe4a09cfdeea235811a167317562046bf7b))
+* авто-определение версии Minecraft, права gradlew, Dependency Graph ([b8d21fc](https://github.com/vidamc/Vida/commit/b8d21fc32d95e9305c19f313804dbfc16bec2557))
+
+
+### Documentation
+
+* Add ultimate API plan and index links ([5c7b1f9](https://github.com/vidamc/Vida/commit/5c7b1f9fcd9e740bf2015df6b178f6edfad0624f))
+* Align first-mod and first-entity guides with current API ([e262526](https://github.com/vidamc/Vida/commit/e262526be55a58ab7756e8ac3a46110c1eacad60))
+* **mundo:** Document abstract world API vs direct Minecraft access ([efce717](https://github.com/vidamc/Vida/commit/efce71775ef7e49b63758b7655907422d3fd823d))
+* Remove editor-specific link from glossary ([acf04d1](https://github.com/vidamc/Vida/commit/acf04d120774e9731a686735cd92b6cc5f2838df))
+* выравнивание таблицы в ultimate-api-plan ([a37b2e0](https://github.com/vidamc/Vida/commit/a37b2e0154ae0344ba4dcb3ba54d794484e3ee95))
+
+
+### Continuous Integration
+
+* **release:** Skip optional mods/ JARs when subprojects absent ([9d231fe](https://github.com/vidamc/Vida/commit/9d231fef944ce096f94bf9ee81fd2b2d1c05271f))
+* Run release-please after CI success on main ([3559821](https://github.com/vidamc/Vida/commit/355982115177ecaa1ee6b7ed24823a46e9061cb8))
+* Workflow для Gradle Plugin Portal; maven-publish и Sonatype staging ([8ae4f20](https://github.com/vidamc/Vida/commit/8ae4f20aadf5cf0fcd39a7136f18695d479a6d63))
+* авто-мерж PR, расширенный релиз, манифест 0.9.0 ([d1bf7dc](https://github.com/vidamc/Vida/commit/d1bf7dcab16103279cc21267f913290f89cb0f26))
+* авторелиз — release-please включает auto-merge на Release PR ([4599748](https://github.com/vidamc/Vida/commit/45997489af194bdfdbec05da3c511220d18c9eb0))
+* проверка секретов Portal и передача ключей через -P для publishPlugins ([1ea7918](https://github.com/vidamc/Vida/commit/1ea7918aa0ad41c66ff23b4370da76a49752c790))
+
 ## [Unreleased]
 
 ### Removed
