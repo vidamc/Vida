@@ -9,7 +9,7 @@
 java = "21"
 
 # Skal Launcher (Kotlin + Compose Desktop)
-kotlin       = "2.4.0"
+kotlin       = "2.4.10"
 compose-mp   = "1.11.1"
 coroutines   = "1.11.0"
 serialization-json = "1.11.0"
@@ -38,7 +38,7 @@ jqwik        = "1.10.1"
 jmh          = "1.37"
 
 # LWJGL (headless GL / клиентские тесты)
-lwjgl        = "3.4.1"
+lwjgl        = "3.4.2"
 
 # Gradle plugins
 spotless     = "8.8.0"
