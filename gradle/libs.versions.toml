@@ -23,7 +23,7 @@ asm          = "9.10.1"
 
 # Логирование
 slf4j        = "2.0.18"
-logback      = "1.6.0"
+logback      = "1.6.1"
 
 # Конфиги
 tomlj        = "1.1.1"
@@ -41,7 +41,7 @@ jmh          = "1.37"
 lwjgl        = "3.4.2"
 
 # Gradle plugins
-spotless     = "8.8.0"
+spotless     = "8.9.0"
 errorprone   = "4.1.0"
 nexus-publish = "2.0.0"
 gradle-plugin-publish = "2.1.1"
